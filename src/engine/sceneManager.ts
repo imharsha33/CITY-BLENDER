@@ -24,6 +24,7 @@ import {
   type FlyoverSceneElements,
   type RingRoadSceneElements,
 } from '../components/Scene/PlanSceneBuilders';
+import { buildSmartSignalJunction3D, type SmartSignalJunctionHandle } from '../components/Scene/SmartSignalJunction';
 import { RealLocationManager } from './RealLocationManager';
 import { AnalysisVisualizer } from '../components/Scene/AnalysisVisualizer';
 import { ProposedInfrastructureManager } from './ProposedInfrastructureManager';
@@ -66,6 +67,7 @@ export class SceneManager {
   private _progress  = 0;
   private autoCam    = true;
   private userLighting: LightingMode | null = null;
+  private lastHeroLightingState = false;
 
   private laneOffsets1 = [-1.0, 1.0];
   private laneOffsets4 = [-6.75, -3.75, 3.75, 6.75, -5.25, 5.25];
@@ -76,6 +78,7 @@ export class SceneManager {
   private currentPlanType: DemoPlanType = 'four_lane';
   private flyoverElements: FlyoverSceneElements | null = null;
   private ringRoadElements: RingRoadSceneElements | null = null;
+  public smartSignalJunction: SmartSignalJunctionHandle | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // ── Renderer ─────────────────────────────────────────────────────────────
@@ -85,18 +88,20 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.setClearColor(0xf1f3f4, 1.0);
 
     // ── Scene ─────────────────────────────────────────────────────────────────
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f172a);
+    this.scene.background = new THREE.Color(0xf1f3f4);
 
     // ── Camera ────────────────────────────────────────────────────────────────
     this.camera = new THREE.PerspectiveCamera(
       55,
       canvas.clientWidth / canvas.clientHeight,
-      0.5,
-      8000
+      1.0,
+      15000
     );
+
     this.camCtrl = new CameraController(this.camera);
     this.camCtrl.attachDomElement(canvas);
 
@@ -334,6 +339,10 @@ export class SceneManager {
       const child = this.demoGroup.children[0];
       this.demoGroup.remove(child);
     }
+    if (this.smartSignalJunction) {
+      this.smartSignalJunction.dispose();
+      this.smartSignalJunction = null;
+    }
     this.vehicles = [];
     this.animScene = null;
     this.flyoverElements = null;
@@ -348,13 +357,30 @@ export class SceneManager {
     } else if (plan === 'ring_road') {
       this.buildRingRoadDemoSubtree();
       this.camCtrl.flyTo(new THREE.Vector3(0, 130, 90), new THREE.Vector3(0, 0, -20), 1.6);
+    } else if (plan === 'road_sensor') {
+      const junction = this.buildRoadSensorDemoSubtree();
+      this.autoCam = false;
+      junction.focusCamera(this.camCtrl, 'overview');
     }
 
     this.setProgress(this._progress);
   }
 
+  private buildRoadSensorDemoSubtree(): SmartSignalJunctionHandle {
+    const junction = buildSmartSignalJunction3D();
+    this.smartSignalJunction = junction;
+    this.demoGroup.add(junction.group);
+    return junction;
+  }
+
   public getDemoPlan(): DemoPlanType {
     return this.currentPlanType;
+  }
+
+  public focusRoadSensorCamera(preset: 'overview' | 'sensor_cutaway' | 'control_unit' | 'north_queue'): void {
+    if (this.smartSignalJunction) {
+      this.smartSignalJunction.focusCamera(this.camCtrl, preset);
+    }
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -784,10 +810,14 @@ export class SceneManager {
       }
     }
     if (!this.userLighting) {
-      if (this._progress >= 0.95 && this.currentMode === 'demo') {
-        setHeroLighting(this.scene);
-      } else {
-        setNormalLighting(this.scene);
+      const isHero = this._progress >= 0.95 && this.currentMode === 'demo';
+      if (isHero !== this.lastHeroLightingState) {
+        this.lastHeroLightingState = isHero;
+        if (isHero) {
+          setHeroLighting(this.scene);
+        } else {
+          setNormalLighting(this.scene);
+        }
       }
     }
   }
@@ -818,26 +848,31 @@ export class SceneManager {
       }
       this.camCtrl.update(delta);
 
-      // Animate 3D issue beacons in real location mode
+      // Animate 3D issue beacons and multi-agent traffic in real location mode
       if (this.currentMode === 'real_location') {
         this.analysisVis.updateAnimation(time);
+        this.realLocationMgr.update(delta);
       }
 
       // Update demo vehicles when demo scene is active
-      if (this.currentMode === 'demo' && this.vehicles.length) {
-        if (this.currentPlanType === 'four_lane') {
-          updateVehicles(
-            this.vehicles,
-            delta,
-            this._progress,
-            this.laneOffsets1,
-            this.laneOffsets4,
-            demoScenario.currentState.geometry.length
-          );
-        } else if (this.currentPlanType === 'flyover') {
-          this.updateFlyoverVehicles(delta);
-        } else if (this.currentPlanType === 'ring_road') {
-          this.updateRingRoadVehicles(delta);
+      if (this.currentMode === 'demo') {
+        if (this.currentPlanType === 'road_sensor' && this.smartSignalJunction) {
+          this.smartSignalJunction.update(delta);
+        } else if (this.vehicles.length) {
+          if (this.currentPlanType === 'four_lane') {
+            updateVehicles(
+              this.vehicles,
+              delta,
+              this._progress,
+              this.laneOffsets1,
+              this.laneOffsets4,
+              demoScenario.currentState.geometry.length
+            );
+          } else if (this.currentPlanType === 'flyover') {
+            this.updateFlyoverVehicles(delta);
+          } else if (this.currentPlanType === 'ring_road') {
+            this.updateRingRoadVehicles(delta);
+          }
         }
       }
 
@@ -851,12 +886,18 @@ export class SceneManager {
     cancelAnimationFrame(this.rafId);
   }
 
-  private onResize = () => {
+  public resize = (width?: number, height?: number) => {
     const canvas = this.renderer.domElement;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    if (!canvas) return;
+    const w = width ?? canvas.clientWidth;
+    const h = height ?? canvas.clientHeight;
+    if (w <= 0 || h <= 0) return;
     this.renderer.setSize(w, h, false);
     this.camCtrl.resize(w, h);
+  };
+
+  private onResize = () => {
+    this.resize();
   };
 
   dispose() {

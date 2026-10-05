@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { demoScenario, PHASE_LABELS } from '../../data/demoScenario';
 import { getPhaseForProgress } from '../../engine/constructionEngine';
 
@@ -29,6 +29,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   onToggleFast,
   scenario = demoScenario,
 }) => {
+  const [isMinimized, setIsMinimized] = useState(false);
   const { startYear, endYear } = scenario.timeline;
   const phases = scenario.constructionPhases;
   
@@ -41,6 +42,28 @@ export const Timeline: React.FC<TimelineProps> = ({
   }
   const phaseLabel = activePhaseObj?.name ?? 'Construction';
   const pct = Math.round(progress * 100);
+
+  if (isMinimized) {
+    return (
+      <div className="timeline-minimized-floating">
+        <div className="realism-btn timeline-minimized-pill" onClick={() => setIsMinimized(false)}>
+          <span style={{ fontSize: 14 }}>⏱️</span>
+          <span><strong>{startYear}</strong> · {pct}%</span>
+          <button
+            className="realism-btn realism-btn--icon timeline-min-play-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              isPlaying ? onPause() : onPlay();
+            }}
+            title={isPlaying ? 'Pause Simulation' : 'Play Simulation'}
+          >
+            {isPlaying ? '❚❚' : '▶'}
+          </button>
+          <span className="expand-indicator" style={{ fontSize: 10, color: '#94a3b8' }}>▲ EXPAND</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="floating-timeline">
@@ -80,12 +103,22 @@ export const Timeline: React.FC<TimelineProps> = ({
           <span className="timeline-stage-tag__name">{phaseLabel}</span>
           <span className="timeline-stage-tag__pct">{pct}%</span>
         </div>
+
+        {/* Minimize Button */}
+        <button
+          className="realism-btn realism-btn--icon"
+          style={{ width: 24, height: 24, fontSize: 11, marginLeft: 6 }}
+          onClick={() => setIsMinimized(true)}
+          title="Minimize Timeline Player"
+        >
+          —
+        </button>
       </div>
 
-      {/* Lower row: Minimal Neumorphic Control Buttons */}
+      {/* Lower row: Realism Neo-Tactile Control Buttons */}
       <div className="timeline-controls-row">
         <button
-          className="neumorphic-btn neumorphic-btn--control"
+          className="realism-btn realism-btn--sm"
           onClick={onRewind}
           title="Rewind 10%"
         >
@@ -94,7 +127,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         </button>
 
         <button
-          className={`neumorphic-btn neumorphic-btn--control ${isPlaying ? 'neumorphic-btn--playing' : 'neumorphic-btn--primary'}`}
+          className={`realism-btn realism-btn--sm ${isPlaying ? 'realism-btn--active' : ''}`}
           onClick={isPlaying ? onPause : onPlay}
           title={isPlaying ? 'Pause Simulation' : 'Play Simulation'}
         >
@@ -103,7 +136,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         </button>
 
         <button
-          className="neumorphic-btn neumorphic-btn--control"
+          className="realism-btn realism-btn--sm"
           onClick={onReset}
           title="Reset Simulation to Beginning"
         >
@@ -112,11 +145,11 @@ export const Timeline: React.FC<TimelineProps> = ({
         </button>
 
         <button
-          className={`neumorphic-btn neumorphic-btn--control ${isFast ? 'neumorphic-btn--active' : ''}`}
+          className={`realism-btn realism-btn--sm ${isFast ? 'realism-btn--active' : ''}`}
           onClick={onToggleFast}
           title="Toggle 2x Speed"
         >
-          <span>{isFast ? '2x' : '1x'}</span>
+          <span>{isFast ? '2x SPEED' : '1x SPEED'}</span>
         </button>
       </div>
     </div>

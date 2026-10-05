@@ -27,6 +27,8 @@ export const LayerControls: React.FC<LayerControlsProps> = ({ layers, onChange }
     });
   };
 
+  const activeCount = Object.values(layers).filter(Boolean).length;
+
   return (
     <div className="dropdown-wrap" ref={containerRef}>
       <button
@@ -35,7 +37,7 @@ export const LayerControls: React.FC<LayerControlsProps> = ({ layers, onChange }
         title="Toggle Geographic Layers"
       >
         <span className="btn-label">LAYERS</span>
-        <span className="btn-value">4/4 ▾</span>
+        <span className="btn-value">{activeCount}/4 ▾</span>
       </button>
 
       {isOpen && (

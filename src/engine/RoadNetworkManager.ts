@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RoadSegmentGeo } from '../types/geo';
 import { GeoCoordinateSystem } from './GeoCoordinateSystem';
+import { getProceduralAsphaltTexture } from '../components/Scene/RoadTextures';
 
 // Visual hierarchy styling for civil engineering GIS digital twins
 interface RoadHierarchyStyle {
@@ -12,80 +13,82 @@ interface RoadHierarchyStyle {
   markingDashed: boolean;
 }
 
+// Google Maps Iconic Road Hierarchy Colors
 const HIERARCHY_STYLES: Record<string, RoadHierarchyStyle> = {
   motorway: {
     width: 14.0,
-    asphaltColor: 0x1a1d21,
-    centerlineColor: 0xf59e0b, // Amber national highway
+    asphaltColor: 0xf59e0b, // Google Maps amber-orange national highway
+    centerlineColor: 0xffffff,
     layerElevation: 0.08,
-    hasMarkings: true,
-    markingDashed: false,
-  },
-  trunk: {
-    width: 12.0,
-    asphaltColor: 0x1f2227,
-    centerlineColor: 0x38bdf8, // Sky blue arterial
-    layerElevation: 0.07,
-    hasMarkings: true,
-    markingDashed: false,
-  },
-  primary: {
-    width: 10.0,
-    asphaltColor: 0x24282f,
-    centerlineColor: 0xe2e8f0, // Crisp white primary
-    layerElevation: 0.06,
-    hasMarkings: true,
-    markingDashed: false,
-  },
-  secondary: {
-    width: 8.0,
-    asphaltColor: 0x2a2f38,
-    centerlineColor: 0x94a3b8, // Slate secondary
-    layerElevation: 0.05,
     hasMarkings: true,
     markingDashed: true,
   },
+  trunk: {
+    width: 12.0,
+    asphaltColor: 0xf97316, // Google Maps warm orange trunk arterial
+    centerlineColor: 0xffffff,
+    layerElevation: 0.07,
+    hasMarkings: true,
+    markingDashed: true,
+  },
+  primary: {
+    width: 10.0,
+    asphaltColor: 0xfde047, // Google Maps sunny yellow primary corridor
+    centerlineColor: 0xffffff,
+    layerElevation: 0.06,
+    hasMarkings: true,
+    markingDashed: true,
+  },
+  secondary: {
+    width: 8.0,
+    asphaltColor: 0xffffff, // Google Maps clean white secondary with border
+    centerlineColor: 0xe2e8f0,
+    layerElevation: 0.05,
+    hasMarkings: true,
+    markingDashed: false,
+  },
   tertiary: {
     width: 6.5,
-    asphaltColor: 0x303641,
-    centerlineColor: 0x64748b, // Muted tertiary
+    asphaltColor: 0xffffff,
+    centerlineColor: 0xe2e8f0,
     layerElevation: 0.04,
     hasMarkings: false,
     markingDashed: false,
   },
   residential: {
     width: 5.5,
-    asphaltColor: 0x363d4a,
-    centerlineColor: 0x475569, // Local neighborhood
+    asphaltColor: 0xffffff,
+    centerlineColor: 0xedf2f7,
     layerElevation: 0.03,
     hasMarkings: false,
     markingDashed: false,
   },
   service: {
     width: 4.0,
-    asphaltColor: 0x3c4352,
-    centerlineColor: 0x334155, // Service / alley
+    asphaltColor: 0xf8fafc,
+    centerlineColor: 0xe2e8f0,
     layerElevation: 0.02,
     hasMarkings: false,
     markingDashed: false,
   },
   unclassified: {
     width: 5.5,
-    asphaltColor: 0x333946,
-    centerlineColor: 0x64748b,
+    asphaltColor: 0xffffff,
+    centerlineColor: 0xe2e8f0,
     layerElevation: 0.03,
     hasMarkings: false,
     markingDashed: false,
   },
   default: {
     width: 5.5,
-    asphaltColor: 0x2f3542,
-    centerlineColor: 0x64748b,
+    asphaltColor: 0xffffff,
+    centerlineColor: 0xe2e8f0,
     layerElevation: 0.03,
     hasMarkings: false,
     markingDashed: false,
   },
 };
+
 
 export class RoadNetworkManager {
   rootGroup: THREE.Group;
@@ -102,7 +105,7 @@ export class RoadNetworkManager {
   interactiveRoads: THREE.Mesh[] = [];
 
   // Material caches
-  private asphaltMaterials = new Map<number, THREE.MeshLambertMaterial>();
+  private asphaltMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private lineMaterials = new Map<number, THREE.LineBasicMaterial>();
   private highlightMaterial: THREE.MeshBasicMaterial;
   private highlightLineMaterial: THREE.LineBasicMaterial;
@@ -140,12 +143,18 @@ export class RoadNetworkManager {
     });
   }
 
-  private getAsphaltMaterial(color: number): THREE.MeshLambertMaterial {
+  private getAsphaltMaterial(color: number): THREE.MeshStandardMaterial {
     if (!this.asphaltMaterials.has(color)) {
-      this.asphaltMaterials.set(color, new THREE.MeshLambertMaterial({ color }));
+      this.asphaltMaterials.set(color, new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.55,
+        metalness: 0.05,
+      }));
     }
     return this.asphaltMaterials.get(color)!;
   }
+
+
 
   private getLineMaterial(color: number): THREE.LineBasicMaterial {
     if (!this.lineMaterials.has(color)) {
@@ -276,17 +285,58 @@ export class RoadNetworkManager {
       const line = new THREE.Line(lineGeo, lineMat);
       line.userData = { type: 'centerline', roadId: road.id };
       this.centerlinesGroup.add(line);
+
+      // Add outer edge border lines for major corridors
+      if (['motorway', 'trunk', 'primary', 'secondary'].includes(road.highwayType) && worldPoints.length >= 2) {
+        const leftEdgePts: THREE.Vector3[] = [];
+        const rightEdgePts: THREE.Vector3[] = [];
+        for (let i = 0; i < worldPoints.length; i++) {
+          const base = i * 2;
+          leftEdgePts.push(new THREE.Vector3(vertices[base * 3], vertices[base * 3 + 1] + 0.015, vertices[base * 3 + 2]));
+          rightEdgePts.push(new THREE.Vector3(vertices[(base + 1) * 3], vertices[(base + 1) * 3 + 1] + 0.015, vertices[(base + 1) * 3 + 2]));
+        }
+        const edgeMat = this.getLineMaterial(0xd1d5db);
+        const lEdge = new THREE.Line(new THREE.BufferGeometry().setFromPoints(leftEdgePts), edgeMat);
+        const rEdge = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rightEdgePts), edgeMat);
+        this.centerlinesGroup.add(lEdge);
+        this.centerlinesGroup.add(rEdge);
+      }
+
+      // Flyover protective concrete side parapets
+      if (isFlyover && worldPoints.length >= 2) {
+        const parapetMat = this.getAsphaltMaterial(0x94a3b8);
+        for (let i = 0; i < worldPoints.length - 1; i++) {
+          const p1 = worldPoints[i];
+          const p2 = worldPoints[i + 1];
+          const segLen = p1.distanceTo(p2);
+          const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+          const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
+          const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+          const angle = Math.atan2(tangent.x, tangent.z);
+
+          [-halfWidth, halfWidth].forEach(offset => {
+            const barGeo = new THREE.BoxGeometry(0.3, 0.8, segLen);
+            const bar = new THREE.Mesh(barGeo, parapetMat);
+            const barPos = new THREE.Vector3().addVectors(mid, normal.clone().multiplyScalar(offset));
+            barPos.y += 0.4;
+            bar.position.copy(barPos);
+            bar.rotation.y = angle;
+            this.roadMeshesGroup.add(bar);
+          });
+        }
+      }
     });
 
     // Generate circular junction discs at intersection vertices for smooth civil geometry
     junctionPoints.forEach(({ pos, maxHalfWidth }) => {
       const discGeo = new THREE.CircleGeometry(maxHalfWidth * 1.05, 12);
       discGeo.rotateX(-Math.PI / 2);
-      const discMat = this.getAsphaltMaterial(0x2a2f38);
+      const discMat = this.getAsphaltMaterial(0xffffff);
       const disc = new THREE.Mesh(discGeo, discMat);
       disc.position.set(pos.x, pos.y - 0.005, pos.z);
       this.junctionsGroup.add(disc);
     });
+
 
     this.rootGroup.visible = true;
   }

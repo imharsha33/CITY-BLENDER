@@ -51,7 +51,7 @@ export const PlanSpecsModal: React.FC<PlanSpecsModalProps> = ({
 
         {/* Plan Switcher Pills inside Modal */}
         <div className="plan-specs-pills-row">
-          {(['four_lane', 'flyover', 'ring_road'] as DemoPlanType[]).map(pKey => {
+          {(['four_lane', 'flyover', 'ring_road', 'road_sensor'] as DemoPlanType[]).map(pKey => {
             const pMeta = PLAN_METAS[pKey];
             const isSel = currentPlan === pKey;
             return (

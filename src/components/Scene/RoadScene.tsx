@@ -17,6 +17,8 @@ import type { InfrastructureStrategy } from '../../types/optimization';
 
 import type { TransformationState, ComparisonMode, ConstructionPhaseDefinition } from '../../types/transformation';
 import type { ForecastResponse } from '../../types/forecasting';
+import type { DemoPlanType } from '../../data/planScenarios';
+import type { SignalJunctionTelemetry } from './SmartSignalJunction';
 
 export interface FocusTarget {
   lat: number;
@@ -58,7 +60,26 @@ interface RoadSceneProps {
   onTransformationComplete?: () => void;
   onTransformationStateChange?: (state: TransformationState) => void;
   transformCameraPreset?: { preset: 'whole_city' | 'corridor' | 'intervention' | 'street' | 'cinematic'; timestamp: number } | null;
-  demoPlan?: 'four_lane' | 'flyover' | 'ring_road';
+  demoPlan?: DemoPlanType;
+  roadSensorPreset?: { preset: 'overview' | 'sensor_cutaway' | 'control_unit' | 'north_queue'; timestamp: number } | null;
+  roadSensorTrigger?: { approach?: 'north' | 'east' | 'south' | 'west'; timestamp: number } | null;
+  roadSensorAdaptiveMode?: boolean;
+  onRoadSensorTelemetry?: (telemetry: SignalJunctionTelemetry) => void;
+}
+
+// Cache WebGL support globally to avoid creating throwaway contexts on every render frame
+let _cachedWebGLSupport: boolean | null = null;
+function isWebGLSupported(): boolean {
+  if (_cachedWebGLSupport !== null) return _cachedWebGLSupport;
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+    _cachedWebGLSupport = !!gl;
+    (gl as any)?.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch {
+    _cachedWebGLSupport = false;
+  }
+  return _cachedWebGLSupport;
 }
 
 export const RoadScene: React.FC<RoadSceneProps> = ({
@@ -88,32 +109,39 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
   transformationHorizon,
   forecastData,
   isTransformationPlaying,
+  onTransformationStateChange,
   onTransformationPhaseChange,
   onTransformationComplete,
-  onTransformationStateChange,
   transformCameraPreset,
+  roadSensorPreset,
+  roadSensorTrigger,
+  roadSensorAdaptiveMode,
+  onRoadSensorTelemetry,
 }) => {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const managerRef = useRef<SceneManager | null>(null);
   const [currentView, setCurrentView] = useState<MapViewType>('whole_area');
-
-  // Detect WebGL support
-  const hasWebGL = useCallback(() => {
-    try {
-      const c = document.createElement('canvas');
-      return !!(c.getContext('webgl') || c.getContext('experimental-webgl'));
-    } catch { return false; }
-  }, []);
+  const webGLAvailable = useRef(isWebGLSupported()).current;
 
   useEffect(() => {
-    if (!canvasRef.current || !hasWebGL()) return;
+    if (!canvasRef.current || !webGLAvailable) return;
 
     const mgr = new SceneManager(canvasRef.current);
     managerRef.current = mgr;
     mgr.startLoop();
 
-    return () => { mgr.dispose(); };
-  }, [hasWebGL]);
+    const resizeObserver = new ResizeObserver(() => {
+      mgr.resize();
+    });
+    if (canvasRef.current.parentElement) {
+      resizeObserver.observe(canvasRef.current.parentElement);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+      mgr.dispose();
+    };
+  }, [webGLAvailable]);
 
   // Sync progress from parent → scene
   useEffect(() => {
@@ -273,6 +301,42 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
     }
   }, [isTransformationPlaying]);
 
+  // Road Sensor Camera Preset Focus
+  useEffect(() => {
+    if (!managerRef.current || !roadSensorPreset) return;
+    managerRef.current.focusRoadSensorCamera(roadSensorPreset.preset);
+  }, [roadSensorPreset]);
+
+  // Road Sensor Dynamic Vehicle Roll-over Trigger
+  useEffect(() => {
+    if (!managerRef.current || !roadSensorTrigger) return;
+    managerRef.current.smartSignalJunction?.triggerVehiclePress(roadSensorTrigger.approach);
+    if (onRoadSensorTelemetry && managerRef.current.smartSignalJunction) {
+      onRoadSensorTelemetry(managerRef.current.smartSignalJunction.getTelemetry());
+    }
+  }, [roadSensorTrigger, onRoadSensorTelemetry]);
+
+  // Road Sensor Adaptive Mode Sync
+  useEffect(() => {
+    if (!managerRef.current?.smartSignalJunction || roadSensorAdaptiveMode === undefined) return;
+    managerRef.current.smartSignalJunction.setAdaptiveMode(roadSensorAdaptiveMode);
+    if (onRoadSensorTelemetry) {
+      onRoadSensorTelemetry(managerRef.current.smartSignalJunction.getTelemetry());
+    }
+  }, [roadSensorAdaptiveMode, onRoadSensorTelemetry]);
+
+  // Road Sensor Telemetry Poll
+  useEffect(() => {
+    const mgr = managerRef.current;
+    if (!mgr || !onRoadSensorTelemetry) return;
+    const interval = setInterval(() => {
+      if (mgr.smartSignalJunction) {
+        onRoadSensorTelemetry(mgr.smartSignalJunction.getTelemetry());
+      }
+    }, 400);
+    return () => clearInterval(interval);
+  }, [onRoadSensorTelemetry]);
+
   // Click interaction for issues, roads & junctions
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!managerRef.current) return;
@@ -284,7 +348,7 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
     }
   };
 
-  if (!hasWebGL()) {
+  if (!webGLAvailable) {
     return (
       <div className="webgl-fallback">
         <div className="webgl-fallback__inner">

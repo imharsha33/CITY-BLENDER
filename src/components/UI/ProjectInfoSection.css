@@ -1,0 +1,718 @@
+/* ============================================================
+   Flow, Build, Route — Civil Architecture & System Specification
+   Theme: High-End Dark Blue Architectural Blueprint Console
+   Signature Palette: Deep Midnight Navy (#070C16 / #0D1626), 
+                      Ice-Blue (#BDD0E2), Pure White (#FFFFFF), Amber (#FCD34D)
+   ============================================================ */
+
+.project-info-section {
+  width: 100%;
+  background-color: #070c16;
+  background-image: 
+    linear-gradient(to right, rgba(189, 208, 226, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(189, 208, 226, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: #ffffff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  border-top: 1.5px solid rgba(189, 208, 226, 0.22);
+  padding: 68px 32px 100px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 20;
+}
+
+.project-info-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* ── Top Bar with Return to 3D Simulation ───────────────────── */
+.project-info-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.project-info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 1px;
+  color: #BDD0E2;
+  background: #0d1626;
+  padding: 6px 14px;
+  border-radius: 3px; /* Strictly squared */
+  border: 1.5px solid rgba(189, 208, 226, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.badge-pulse-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #BDD0E2;
+  box-shadow: 0 0 8px rgba(189, 208, 226, 0.85);
+  animation: pulseIce 2s infinite;
+}
+
+@keyframes pulseIce {
+  0% { box-shadow: 0 0 0 0 rgba(189, 208, 226, 0.6); }
+  70% { box-shadow: 0 0 0 6px rgba(189, 208, 226, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(189, 208, 226, 0); }
+}
+
+.project-back-to-sim-btn {
+  background: #BDD0E2;
+  color: #070c16;
+  border: 1.5px solid #BDD0E2;
+  border-radius: 3px; /* Strictly squared */
+  font-size: 11.5px;
+  font-weight: 850;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.project-back-to-sim-btn:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #070c16;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(189, 208, 226, 0.4);
+}
+
+/* ── Hero Title ─────────────────────────────────────────────── */
+.project-info-hero {
+  text-align: center;
+  padding: 10px 0 16px;
+}
+
+.project-info-hero__title {
+  font-size: clamp(34px, 5vw, 50px);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 1px;
+  margin: 0 0 12px;
+  line-height: 1.15;
+  text-transform: uppercase;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+}
+
+.hero-gradient-text {
+  color: #ffffff;
+}
+
+.project-info-hero__subtitle {
+  font-size: clamp(14.5px, 2vw, 17px);
+  color: #BDD0E2;
+  max-width: 780px;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-weight: 450;
+}
+
+/* ── Universal Dark Blue Architectural Card ─────────────────── */
+.project-card {
+  background: #0d1626;
+  border: 1.5px solid rgba(189, 208, 226, 0.22);
+  border-radius: 4px; /* Strictly squared */
+  padding: 32px 36px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-card:hover {
+  border-color: rgba(189, 208, 226, 0.35);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: 0.8px;
+  color: #070c16;
+  background: #BDD0E2;
+  padding: 4px 10px;
+  border-radius: 2px;
+  width: fit-content;
+  text-transform: uppercase;
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 850;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.4px;
+}
+
+.card-lead {
+  font-size: 15px;
+  color: #BDD0E2;
+  line-height: 1.7;
+  margin: 0;
+  font-weight: 450;
+}
+
+.card-lead strong {
+  color: #ffffff;
+}
+
+/* ── Executive 2-Column Overview Grid ───────────────────────── */
+.concept-exec-grid {
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 24px;
+}
+
+@media (max-width: 960px) {
+  .concept-exec-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── One Sentence Quote Box ─────────────────────────────────── */
+.one-sentence-card {
+  justify-content: space-between;
+}
+
+.one-sentence-quote {
+  font-size: 15.5px;
+  font-style: italic;
+  font-weight: 450;
+  color: #ffffff;
+  background: #111d33;
+  border: 1.5px solid rgba(189, 208, 226, 0.25);
+  border-left: 4px solid #fcd34d;
+  padding: 20px 24px;
+  margin: 0;
+  border-radius: 0 3px 3px 0;
+  line-height: 1.65;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Overall Flow Pipeline ──────────────────────────────────── */
+.flow-steps-pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 24px 20px;
+  background: #080f1c;
+  border-radius: 3px;
+  border: 1.5px solid rgba(189, 208, 226, 0.2);
+}
+
+.pipeline-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #0d1626;
+  border: 1.5px solid rgba(189, 208, 226, 0.25);
+  border-radius: 3px;
+  padding: 14px 16px;
+  min-width: 105px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pipeline-node:hover {
+  transform: translateY(-3px);
+  border-color: #BDD0E2;
+  box-shadow: 0 8px 24px rgba(189, 208, 226, 0.25);
+  background: #142238;
+}
+
+.pipeline-node.highlight {
+  border-color: #fcd34d;
+  background: #142238;
+  box-shadow: 0 0 16px rgba(252, 211, 77, 0.25);
+}
+
+.node-icon {
+  font-size: 22px;
+}
+
+.node-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.pipeline-arrow {
+  font-size: 18px;
+  font-weight: 900;
+  color: #BDD0E2;
+}
+
+/* ── Pillars Grid (1. Flow, 2. Build, 3. Route) ─────────────── */
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.pillar-card {
+  background: #0d1626;
+  border: 1.5px solid rgba(189, 208, 226, 0.22);
+  border-radius: 4px;
+  padding: 28px 30px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.pillar-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(189, 208, 226, 0.45);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+}
+
+.pillar-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pillar-number {
+  width: 36px;
+  height: 36px;
+  border-radius: 2px;
+  background: #BDD0E2;
+  color: #070c16;
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pillar-tag {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.8px;
+  color: #fcd34d;
+  display: block;
+  text-transform: uppercase;
+}
+
+.pillar-title {
+  font-size: 17px;
+  font-weight: 850;
+  color: #ffffff;
+  margin: 2px 0 0;
+}
+
+.pillar-desc {
+  font-size: 13.5px;
+  color: #BDD0E2;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.pillar-callout {
+  background: #080f1c;
+  border: 1.5px solid rgba(189, 208, 226, 0.2);
+  border-left: 4px solid #BDD0E2;
+  border-radius: 2px;
+  padding: 14px 16px;
+}
+
+.callout-title {
+  font-size: 12px;
+  font-weight: 850;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 0.4px;
+}
+
+.callout-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: #BDD0E2;
+  line-height: 1.55;
+}
+
+.callout-list strong {
+  color: #ffffff;
+}
+
+.callout-list li {
+  margin-bottom: 4px;
+}
+
+/* ── Approach Density Example Box ───────────────────────────── */
+.approach-density-example-box {
+  background: #080f1c;
+  border: 1.5px solid rgba(189, 208, 226, 0.2);
+  border-radius: 3px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.example-box-title {
+  font-size: 11.5px;
+  font-weight: 850;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.approach-density-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.density-bar-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 140px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.density-road-name {
+  font-weight: 700;
+  color: #BDD0E2;
+}
+
+.density-bar-track {
+  height: 8px;
+  background: #142238;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.density-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.fill-high { background: #ef4444; }
+.fill-med-high { background: #f59e0b; }
+.fill-med { background: #3b82f6; }
+.fill-low { background: #10b981; }
+
+.density-road-val {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #BDD0E2;
+}
+
+.density-road-val.high { color: #f87171; font-weight: 800; }
+.density-road-val.low { color: #34d399; font-weight: 800; }
+
+.example-footer-note {
+  font-size: 11.5px;
+  color: #8fa3b7;
+  font-style: italic;
+  margin: 4px 0 0;
+}
+
+/* ── Graph Definitions & SVG ────────────────────────────────── */
+.graph-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.graph-def-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: #BDD0E2;
+}
+
+.graph-def-item strong {
+  color: #ffffff;
+}
+
+.def-badge {
+  font-size: 10.5px;
+  font-weight: 850;
+  color: #070c16;
+  background: #BDD0E2;
+  padding: 2px 8px;
+  border-radius: 2px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.graph-diagram-box {
+  background: #080f1c;
+  border: 1.5px solid rgba(189, 208, 226, 0.2);
+  border-radius: 3px;
+  padding: 16px 18px;
+  text-align: center;
+}
+
+.graph-diagram-title {
+  font-size: 11.5px;
+  font-weight: 850;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 8px;
+  text-align: left;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.graph-svg-container {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.graph-svg {
+  width: 100%;
+  height: auto;
+}
+
+.graph-note {
+  font-size: 11.5px;
+  color: #8fa3b7;
+  margin: 8px 0 0;
+  line-height: 1.45;
+  text-align: left;
+}
+
+/* ── Route Comparison Cards ─────────────────────────────────── */
+.route-comparison-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.route-card {
+  padding: 14px 16px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(189, 208, 226, 0.25);
+  background: #080f1c;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.route-card--congested {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.route-card--recommended {
+  border-left: 4px solid #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.route-card__status {
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.route-card--congested .route-card__status { color: #f87171; }
+.route-card--recommended .route-card__status { color: #34d399; }
+
+.route-card__name {
+  font-size: 13.5px;
+  font-weight: 850;
+  color: #ffffff;
+}
+
+.route-card__metrics {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #BDD0E2;
+}
+
+.route-card__metrics strong {
+  color: #ffffff;
+}
+
+/* ── Signal Principles List ─────────────────────────────────── */
+.signal-principles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.principle-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.principle-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.principle-item strong {
+  font-size: 13.5px;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.principle-item p {
+  font-size: 12.5px;
+  color: #BDD0E2;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── System Architecture Table ──────────────────────────────── */
+.table-card {
+  gap: 22px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1.5px solid rgba(189, 208, 226, 0.25);
+  border-radius: 4px;
+  background: #080f1c;
+}
+
+.architecture-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+.architecture-table th {
+  background: #111d33;
+  padding: 14px 18px;
+  font-size: 11px;
+  font-weight: 850;
+  color: #ffffff;
+  letter-spacing: 0.8px;
+  border-bottom: 1.5px solid rgba(189, 208, 226, 0.3);
+  text-transform: uppercase;
+}
+
+.architecture-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(189, 208, 226, 0.15);
+  color: #BDD0E2;
+  line-height: 1.55;
+  background: #0d1626;
+}
+
+.architecture-table td strong {
+  color: #ffffff;
+}
+
+.architecture-table tbody tr:hover td {
+  background: #15223a;
+}
+
+.comp-badge {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 850;
+  padding: 5px 12px;
+  border-radius: 2px;
+  display: inline-block;
+  letter-spacing: 0.6px;
+}
+
+.comp-flow {
+  background: #BDD0E2;
+  color: #070c16;
+}
+
+.comp-build {
+  background: #fcd34d;
+  color: #070c16;
+}
+
+.comp-route {
+  background: #6ee7b7;
+  color: #070c16;
+}
+
+.table-bottom-conclusion {
+  background: #111d33;
+  border: 1.5px solid rgba(189, 208, 226, 0.25);
+  border-left: 4px solid #BDD0E2;
+  border-radius: 3px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.conclusion-tag {
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: 0.8px;
+  color: #fcd34d;
+  text-transform: uppercase;
+}
+
+.table-bottom-conclusion p {
+  font-size: 14px;
+  color: #BDD0E2;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.table-bottom-conclusion strong {
+  color: #ffffff;
+}
+
+/* ── Project Info Footer ────────────────────────────────────── */
+.project-info-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 28px;
+  border-top: 1.5px solid rgba(189, 208, 226, 0.2);
+}
+
+.footer-brand {
+  font-size: 13px;
+  color: #8fa3b7;
+}
+
+.footer-brand strong {
+  color: #ffffff;
+  font-weight: 800;
+}

@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import type { BuildingGeo } from '../../types/geo';
 import { GeoCoordinateSystem } from '../../engine/GeoCoordinateSystem';
 
-// Professional civil engineering digital twin palette: muted architectural concrete & slate
+// Google Maps 3D light architectural building tones
 const BUILDING_PALETTE = [
-  new THREE.MeshLambertMaterial({ color: 0x272b30 }),
-  new THREE.MeshLambertMaterial({ color: 0x2e333a }),
-  new THREE.MeshLambertMaterial({ color: 0x343942 }),
-  new THREE.MeshLambertMaterial({ color: 0x2a2e35 }),
-  new THREE.MeshLambertMaterial({ color: 0x23262b }),
+  new THREE.MeshStandardMaterial({ color: 0xe6e2d8, roughness: 0.8, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0xded8ce, roughness: 0.8, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0xe2ddd2, roughness: 0.8, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0xd9d3c8, roughness: 0.8, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0xede9e0, roughness: 0.8, metalness: 0.05 }),
 ];
+
 
 export function buildRealBuildings(
   buildings: BuildingGeo[],

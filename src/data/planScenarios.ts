@@ -8,7 +8,7 @@ import type {
 } from '../types/infrastructure';
 import { demoScenario as fourLaneScenario } from './demoScenario';
 
-export type DemoPlanType = 'four_lane' | 'flyover' | 'ring_road';
+export type DemoPlanType = 'four_lane' | 'flyover' | 'ring_road' | 'road_sensor';
 
 export interface PlanMeta {
   id: DemoPlanType;
@@ -40,7 +40,7 @@ export const PLAN_METAS: Record<DemoPlanType, PlanMeta> = {
   four_lane: {
     id: 'four_lane',
     title: '4-Lane Divided Highway Expansion',
-    shortTitle: '4-Lane Highway',
+    shortTitle: '4-Lane',
     badge: 'DIVIDED EXPRESSWAY',
     badgeColor: '#3b82f6',
     icon: '🛣️',
@@ -69,7 +69,7 @@ export const PLAN_METAS: Record<DemoPlanType, PlanMeta> = {
   flyover: {
     id: 'flyover',
     title: 'Grade-Separated Elevated Flyover Viaduct',
-    shortTitle: 'Elevated Flyover',
+    shortTitle: 'Flyover',
     badge: 'GRADE SEPARATION',
     badgeColor: '#8b5cf6',
     icon: '🌉',
@@ -99,7 +99,7 @@ export const PLAN_METAS: Record<DemoPlanType, PlanMeta> = {
   ring_road: {
     id: 'ring_road',
     title: 'High-Capacity Orbital Ring Road Bypass',
-    shortTitle: 'Orbital Ring Road',
+    shortTitle: 'Ring Road',
     badge: 'PERIPHERAL BYPASS',
     badgeColor: '#10b981',
     icon: '🔄',
@@ -124,6 +124,34 @@ export const PLAN_METAS: Record<DemoPlanType, PlanMeta> = {
       'Redundant network topology prevents single-point failure gridlock',
     ],
     constructionPhasesCount: 10,
+  },
+  road_sensor: {
+    id: 'road_sensor',
+    title: 'Smart Signal Junction & Sub-Surface Piezoresistive Sensors',
+    shortTitle: 'Road Sensors',
+    badge: 'IOT & SMART SIGNALS',
+    badgeColor: '#10b981',
+    icon: '🚥',
+    headline: 'Real-time vehicle pressure detection with adaptive signal timing',
+    description: 'Deploys piezoresistive sensor arrays embedded beneath road asphalt at 4-way signalized intersection. Directly calculates real-time approach queue densities to dynamically allocate green phase times via localized Traffic Control Unit.',
+    problemResolved: 'Eliminates unnecessary waiting times at empty signals and prevents intersection spillback congestion.',
+    standards: 'IEEE 1451.4 / NEMA TS-2 Intelligent Traffic Actuation',
+    designSpeed: '50 - 60 km/h Urban Intersection',
+    capacityGain: '+45% junction throughput; -35% average intersection delay',
+    corridorLength: '4-Way Signalized Urban Crossroad',
+    crossSection: {
+      lanes: '4 Approaches (2x2 Inbound/Outbound)',
+      laneWidth: '3.50 m per lane',
+      median: 'Raised curb divider and pedestrian crosswalks',
+      shoulders: 'Sidewalks with curb-ramp corners',
+    },
+    keyBenefits: [
+      'Piezoresistive sub-surface pressure arrays embedded beneath road surface',
+      'Dynamic green phase allocation (45s High vs 15s Low approach)',
+      'Under-asphalt sub-surface cutaway visualization and live strain metrics',
+      'Zero maintenance solid-state axle detection',
+    ],
+    constructionPhasesCount: 4,
   },
 };
 
@@ -516,4 +544,5 @@ export const SCENARIOS: Record<DemoPlanType, InfrastructureScenario> = {
   four_lane: fourLaneScenario,
   flyover: flyoverScenario,
   ring_road: ringRoadScenario,
+  road_sensor: fourLaneScenario,
 };

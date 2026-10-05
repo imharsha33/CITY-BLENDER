@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Header } from './components/UI/Header';
+import { Header, type MainNavigationMode } from './components/UI/Header';
+import { RouteToolbar } from './components/UI/RouteToolbar';
+import { FrontPage } from './components/UI/FrontPage';
 import { RoadScene, type FocusTarget } from './components/Scene/RoadScene';
 import { Timeline } from './components/Timeline/Timeline';
 import { CompactStatus } from './components/Panels/CompactStatus';
@@ -41,14 +43,20 @@ import type { TransformationState, ComparisonMode, ConstructionPhaseDefinition }
 import { CONSTRUCTION_PHASES } from './types/transformation';
 import { PlanSelectionBar } from './components/Panels/PlanSelectionBar';
 import { PlanSpecsModal } from './components/Panels/PlanSpecsModal';
+import { RoadSensorPanel } from './components/Panels/RoadSensorPanel';
+import type { SignalJunctionTelemetry } from './components/Scene/SmartSignalJunction';
 import type { DemoPlanType } from './data/planScenarios';
 import { SCENARIOS } from './data/planScenarios';
+import { ProjectInfoSection } from './components/UI/ProjectInfoSection';
 import './styles/global.css';
 
 const NORMAL_SPEED = 0.00035; // ~48s full run
 const FAST_SPEED   = 0.0012;  // ~14s full run
 
 export default function App() {
+  // Main Navigation Mode: HOME (Front Page) | FLOW | BUILD | ROUTE
+  const [mainNavMode, setMainNavMode]   = useState<MainNavigationMode>('home');
+
   // Phase 1 visualization states
   const [progress, setProgress]         = useState(0);
   const [isPlaying, setIsPlaying]       = useState(false);
@@ -57,11 +65,84 @@ export default function App() {
   const [lightingMode, setLightingMode] = useState<LightingMode>('day');
   const [showDetails, setShowDetails]   = useState(false);
   const [showHero, setShowHero]         = useState(false);
-  const [demoPlan, setDemoPlan]         = useState<DemoPlanType>('four_lane');
+  const [demoPlan, setDemoPlan]         = useState<DemoPlanType>('road_sensor');
   const [showSpecsModal, setShowSpecsModal] = useState(false);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
 
-  // Phase 2 real location states (Real Location is the primary experience)
-  const [mode, setMode]                         = useState<SceneMode>('real_location');
+  const handleScrollToDocs = useCallback(() => {
+    const el = document.getElementById('project-overview');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
+
+  const handleAboutClick = useCallback(() => {
+    if (mainNavMode !== 'home') {
+      setMainNavMode('home');
+      setIsRoadSensorOpen(false);
+      setTimeout(() => {
+        handleScrollToDocs();
+      }, 100);
+    } else {
+      handleScrollToDocs();
+    }
+  }, [mainNavMode, handleScrollToDocs]);
+
+  const handleScrollToTop = useCallback(() => {
+    const rootEl = document.querySelector('.app-viewport-root');
+    if (rootEl) {
+      rootEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleSelectNavMode = useCallback((selectedMode: MainNavigationMode) => {
+    setMainNavMode(selectedMode);
+    if (selectedMode === 'home') {
+      setIsRoadSensorOpen(false);
+    } else if (selectedMode === 'flow') {
+      setMode('demo');
+      setDemoPlan('road_sensor');
+      setIsRoadSensorOpen(true);
+      setRoadSensorPreset({ preset: 'overview', timestamp: Date.now() });
+    } else if (selectedMode === 'build') {
+      setMode('demo');
+      setDemoPlan(prev => (prev === 'road_sensor' ? 'four_lane' : prev));
+      setIsRoadSensorOpen(false);
+    } else if (selectedMode === 'route') {
+      setMode('real_location');
+      setIsRoadSensorOpen(false);
+    }
+  }, []);
+
+  // Road Sensor & Smart Signal Junction states
+  const [isRoadSensorOpen, setIsRoadSensorOpen] = useState(true);
+  const [roadSensorTelemetry, setRoadSensorTelemetry] = useState<SignalJunctionTelemetry>({
+    currentPhase: 'NORTH_SOUTH',
+    phaseTimeRemaining: 45,
+    totalCycleSeconds: 70,
+    adaptiveMode: true,
+    totalVehiclesDetected: 42,
+    approaches: {
+      north: { id: 'north', name: 'North Approach', densityLevel: 'High', densityVehPerHour: 48, assignedGreenSeconds: 45, currentSignal: 'GREEN', activeSensorPressureMpa: 0.88, resistanceChangePercent: -15.4, sensorTriggered: true },
+      east: { id: 'east', name: 'East Approach', densityLevel: 'Moderate', densityVehPerHour: 22, assignedGreenSeconds: 25, currentSignal: 'RED', activeSensorPressureMpa: 0.42, resistanceChangePercent: -7.2, sensorTriggered: false },
+      south: { id: 'south', name: 'South Approach', densityLevel: 'Light', densityVehPerHour: 8, assignedGreenSeconds: 15, currentSignal: 'GREEN', activeSensorPressureMpa: 0.25, resistanceChangePercent: -4.1, sensorTriggered: false },
+      west: { id: 'west', name: 'West Approach', densityLevel: 'Low', densityVehPerHour: 5, assignedGreenSeconds: 12, currentSignal: 'RED', activeSensorPressureMpa: 0.18, resistanceChangePercent: -3.0, sensorTriggered: false },
+    },
+    latestSensorReading: {
+      approach: 'North Approach (Lane 1)',
+      pressureMpa: 0.88,
+      weightTons: 1.85,
+      deltaROverR: -15.4,
+      timestamp: Date.now(),
+    },
+  });
+  const [roadSensorPreset, setRoadSensorPreset] = useState<{ preset: 'overview' | 'sensor_cutaway' | 'control_unit' | 'north_queue'; timestamp: number } | null>(null);
+  const [roadSensorTrigger, setRoadSensorTrigger] = useState<{ approach?: 'north' | 'east' | 'south' | 'west'; timestamp: number } | null>(null);
+  const [roadSensorAdaptiveMode, setRoadSensorAdaptiveMode] = useState(true);
+
+  // Phase 2 real location states (Real Location is active in ROUTE mode)
+  const [mode, setMode]                         = useState<SceneMode>('demo');
   const [realLocationData, setRealLocationData] = useState<GeoAreaResponse | null>(null);
   const [loadingStep, setLoadingStep]           = useState<LoadingStep>('idle');
   const [isSearching, setIsSearching]           = useState(false);
@@ -199,10 +280,42 @@ export default function App() {
     setProgress(p);
   }, [handlePause]);
 
+  const handleToggleRoadSensor = useCallback(() => {
+    setIsRoadSensorOpen(prev => {
+      const next = !prev;
+      if (next) {
+        setMode('demo');
+        setDemoPlan('road_sensor');
+        setRoadSensorPreset({ preset: 'overview', timestamp: Date.now() });
+      } else {
+        setDemoPlan('four_lane');
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectDemoPlan = useCallback((plan: DemoPlanType) => {
+    setMode('demo');
+    setDemoPlan(plan);
+    if (plan === 'road_sensor') {
+      setMainNavMode('flow');
+      setIsRoadSensorOpen(true);
+      setRoadSensorPreset({ preset: 'overview', timestamp: Date.now() });
+    } else {
+      setMainNavMode('build');
+      setIsRoadSensorOpen(false);
+    }
+  }, []);
+
   // Phase 2: Location Selection & Loading Pipeline
-  const handleSelectLocation = useCallback(async (loc: LocationResult) => {
+  const handleSelectLocation = useCallback(async (loc: LocationResult, activateNavMode = true) => {
     handlePause();
+    if (activateNavMode) {
+      setMainNavMode('route');
+    }
+    setMode('real_location');
     setIsSearching(true);
+    setIsRoadSensorOpen(false);
     const cityName = (loc.name || loc.displayName.split(',')[0]).trim().toUpperCase();
     const isMadurai = cityName.includes('MADURAI');
     setLoadingStep(isMadurai ? 'LOADING MADURAI DIGITAL TWIN...' : `LOADING ${cityName} DIGITAL TWIN...`);
@@ -283,15 +396,17 @@ export default function App() {
     setTimeout(() => setLoadingStep('idle'), 800);
   }, [handlePause]);
 
-  // On App Launch: Real Location Mode is primary; auto-load default location (Varkala, Kerala)
+  // On App Launch: Preload primary demonstration city (Madurai, Tamil Nadu) in background without leaving home front page
   useEffect(() => {
     handleSelectLocation({
-      id: 'default-varkala',
-      displayName: 'Varkala, Thiruvananthapuram, Kerala, India',
-      latitude: 8.7379,
-      longitude: 76.7163,
-    });
+      id: 'madurai-city-tamilnadu',
+      displayName: 'Madurai, Tamil Nadu, India',
+      name: 'Madurai',
+      latitude: 9.9261,
+      longitude: 78.1141,
+    }, false); // false ensures mainNavMode remains 'home' on initial page load / refresh
   }, [handleSelectLocation]);
+
 
   // Phase 3: Run Intelligent Infrastructure Problem Analysis
   // Directly sends current authoritative realLocationData (OSM or User Import) for 100% parity
@@ -666,6 +781,7 @@ export default function App() {
       setSelectedRoad(null);
       setSelectedJunction(null);
     } else {
+      setIsRoadSensorOpen(false);
       if (realLocationData) {
         setMode('real_location');
       } else {
@@ -683,105 +799,242 @@ export default function App() {
 
   return (
     <div className="app-viewport-root">
-      {/* ── 3D Canvas (Dominates 90-95% of visual viewport) ── */}
-      <div className="app-canvas-container">
-        <RoadScene
-          progress={progress}
-          isPlaying={isPlaying}
-          onProgressChange={handleSlider}
-          cameraMode={cameraMode}
-          lightingMode={lightingMode}
-          mode={mode}
-          demoPlan={demoPlan}
-          realLocationData={realLocationData}
-          layers={layers}
-          analysisData={isAnalysisActive ? analysisData : null}
-          analysisFilter={analysisFilter}
-          candidatePlan={selectedPlan}
-          strategy={selectedStrategy}
-          planningViewState={planningViewState}
-          focusTarget={focusTarget}
-          selectedRoad={selectedRoad}
-          selectedIssue={selectedIssue}
-          onSelectIssue={handleInspectIssue}
-          onSelectRoad={handleInspectRoad}
-          onSelectJunction={handleInspectJunction}
-          transformationState={transformationState}
-          transformationProgress={transformationProgress}
-          transformationSpeed={transformationSpeed}
-          transformationComparison={transformationComparison}
-          transformationHorizon={transformationHorizon}
-          forecastData={forecastData}
-          isTransformationPlaying={isTransformationPlaying}
-          onTransformationPhaseChange={handleTransformationPhaseChange}
-          onTransformationComplete={handleTransformationComplete}
-          onTransformationStateChange={handleTransformationStateChange}
-          transformCameraPreset={transformCameraPreset}
-        />
-      </div>
-
-      {/* ── Floating Minimal Neumorphic UI Layer ── */}
-      <div className="app-overlay-layer">
-        {/* Top Header with Location Search & Analysis Action */}
+      {/* ── Top Fixed/Sticky Application Header (FLOW | BUILD | ROUTE) ── */}
+      <header className="app-top-nav-bar">
         <Header
-          cameraMode={cameraMode}
-          onCameraChange={setCameraMode}
-          lightingMode={lightingMode}
-          onLightingChange={setLightingMode}
-          onToggleDetails={() => setShowDetails(v => !v)}
-          mode={mode}
-          onModeToggle={handleModeToggle}
-          onSelectLocation={handleSelectLocation}
-          isSearching={isSearching}
-          layers={layers}
-          onLayersChange={setLayers}
-          onAnalyze={handleRunAnalysis}
-          isAnalyzing={isAnalyzing}
-          hasAnalysis={!!analysisData}
-          isAnalysisActive={isAnalysisActive}
-          onToggleAnalysisMode={() => setIsAnalysisActive(v => !v)}
-          onToggleFindings={() => {
-            if (isFindingsOpen) openSinglePanel('none');
-            else openSinglePanel('findings');
-          }}
-          isFindingsOpen={isFindingsOpen}
-          locationName={realLocationData?.locationName}
-          dataQualityScore={analysisData?.summary.dataQualityScore}
-          onMapLoaded={handleMapImported}
-          onToggleZones={() => {
-            if (isZonesOpen) openSinglePanel('none');
-            else openSinglePanel('zones');
-          }}
-          isZonesOpen={isZonesOpen}
-          zonesCount={analysisData?.developmentZones?.length || 0}
-          onTogglePlanning={handleTogglePlanning}
-          isPlanningOpen={isPlanningOpen}
-          onToggleForecast={handleToggleForecast}
-          isForecastOpen={isForecastOpen}
-          onToggleOptimization={handleToggleOptimization}
-          isOptimizationOpen={isOptimizationOpen}
-          onToggleTransformation={() => {
-            if (isTransformationOpen) openSinglePanel('none');
-            else openSinglePanel('transformation');
-          }}
-          isTransformationOpen={isTransformationOpen}
-          hasSelectedPlanOrStrategy={!!(selectedStrategy || selectedPlan)}
-          onToggleEvidence={() => {
-            if (isEvidenceOpen) openSinglePanel('none');
-            else openSinglePanel('evidence');
-          }}
-          isEvidenceOpen={isEvidenceOpen}
+          activeMode={mainNavMode}
+          onSelectMode={handleSelectNavMode}
+          onAboutClick={handleAboutClick}
         />
+      </header>
+
+      {/* ── Front Page (Neat, Aesthetic, Classy Layout) ── */}
+      {mainNavMode === 'home' && (
+        <FrontPage
+          onSelectMode={handleSelectNavMode}
+          onScrollToDocs={handleScrollToDocs}
+        />
+      )}
+
+      {/* ── 3D Map Workstation Box Layout Container (Active for Flow, Build, Route) ── */}
+      {mainNavMode !== 'home' && (
+        <main className="map-box-wrapper">
+          <div className={`map-box-frame ${isMapExpanded ? 'map-box-frame--expanded' : ''}`}>
+            {/* 3D Viewport Header Bar with Back Button */}
+            <div className="map-box-viewport-header">
+              <div className="map-box-header__left">
+                <button
+                  className="map-box-back-btn"
+                  onClick={() => handleSelectNavMode('home')}
+                  title="Return to Front Page"
+                >
+                  ← Back
+                </button>
+                <span className="map-status-dot" />
+                <span className="map-status-title">
+                  {mainNavMode.toUpperCase()}
+                </span>
+                <span className="map-header-pipe">|</span>
+                <span className="map-active-plan-pill">
+                  {mainNavMode === 'flow'
+                    ? `${roadSensorTelemetry.currentPhase === 'NORTH_SOUTH' ? 'N-S' : 'E-W'} • ${roadSensorTelemetry.phaseTimeRemaining}s`
+                    : mainNavMode === 'build'
+                    ? (SCENARIOS[demoPlan]?.name.toUpperCase() || 'CIVIL PLAN')
+                    : (realLocationData?.locationName
+                        ? realLocationData.locationName.split(',')[0].toUpperCase()
+                        : 'METROPOLITAN TWIN')}
+                </span>
+              </div>
+
+            <div className="map-box-header__center">
+              {mainNavMode === 'flow' ? (
+                <div className="map-quick-cam-pills">
+                  <button
+                    className="map-cam-btn"
+                    onClick={() => setRoadSensorPreset({ preset: 'overview', timestamp: Date.now() })}
+                    title="Camera Overview of Junction"
+                  >
+                    Overview
+                  </button>
+                  <button
+                    className="map-cam-btn"
+                    onClick={() => setRoadSensorPreset({ preset: 'sensor_cutaway', timestamp: Date.now() })}
+                    title="Sub-Surface Strata Sensor Cutaway"
+                  >
+                    Strata
+                  </button>
+                  <button
+                    className="map-cam-btn"
+                    onClick={() => setRoadSensorPreset({ preset: 'control_unit', timestamp: Date.now() })}
+                    title="Traffic Control Unit (TCU)"
+                  >
+                    TCU
+                  </button>
+                  <button
+                    className="map-cam-btn"
+                    onClick={() => setRoadSensorPreset({ preset: 'north_queue', timestamp: Date.now() })}
+                    title="North Approach Queue"
+                  >
+                    Queue
+                  </button>
+                </div>
+              ) : (
+                <div className="map-quick-cam-pills">
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'overview' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('overview')}
+                    title="Drone Overview Perspective"
+                  >
+                    Drone
+                  </button>
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'road_level' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('road_level')}
+                    title="Driver POV Ground Perspective"
+                  >
+                    POV
+                  </button>
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'top' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('top')}
+                    title="Top-Down Orthographic View"
+                  >
+                    Top
+                  </button>
+                  {mainNavMode === 'build' && (
+                    <button
+                      className={`map-cam-btn ${cameraMode === 'flyover' ? 'active' : ''}`}
+                      onClick={() => setCameraMode('flyover')}
+                      title="Flyover Focus View"
+                    >
+                      Flyover
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="map-box-header__right">
+              {mainNavMode === 'flow' && (
+                <button
+                  className="map-box-tool-btn"
+                  onClick={() => setIsRoadSensorOpen(v => !v)}
+                  title="Toggle Telemetry Overlay"
+                >
+                  {isRoadSensorOpen ? 'Hide Overlay' : 'Show Overlay'}
+                </button>
+              )}
+              <button
+                className="map-box-tool-btn"
+                onClick={() => setIsMapExpanded(v => !v)}
+                title={isMapExpanded ? "Return to Box View" : "Maximize Viewport"}
+              >
+                {isMapExpanded ? "❐ Box" : "⛶ Maximize"}
+              </button>
+            </div>
+          </div>
+
+          {/* Dedicated Route Toolbar in ROUTE mode */}
+          {mainNavMode === 'route' && (
+            <RouteToolbar
+              locationName={realLocationData?.locationName}
+              onSelectLocation={handleSelectLocation}
+              onSelectDemoPlan={handleSelectDemoPlan}
+              isSearching={isSearching}
+              onMapLoaded={handleMapImported}
+              isAnalyzing={isAnalyzing}
+              layers={layers}
+              onLayersChange={setLayers}
+              hasAnalysis={!!analysisData}
+              isAnalysisActive={isAnalysisActive}
+              onAnalyze={handleRunAnalysis}
+              onToggleAnalysisMode={() => setIsAnalysisActive(v => !v)}
+              onToggleFindings={() => {
+                if (isFindingsOpen) openSinglePanel('none');
+                else openSinglePanel('findings');
+              }}
+              isFindingsOpen={isFindingsOpen}
+              onToggleZones={() => {
+                if (isZonesOpen) openSinglePanel('none');
+                else openSinglePanel('zones');
+              }}
+              isZonesOpen={isZonesOpen}
+              zonesCount={analysisData?.developmentZones?.length || 0}
+              onTogglePlanning={handleTogglePlanning}
+              isPlanningOpen={isPlanningOpen}
+              onToggleForecast={handleToggleForecast}
+              isForecastOpen={isForecastOpen}
+              onToggleOptimization={handleToggleOptimization}
+              isOptimizationOpen={isOptimizationOpen}
+              onToggleTransformation={() => {
+                if (isTransformationOpen) openSinglePanel('none');
+                else openSinglePanel('transformation');
+              }}
+              isTransformationOpen={isTransformationOpen}
+              hasSelectedPlanOrStrategy={!!(selectedStrategy || selectedPlan)}
+              onToggleEvidence={() => {
+                if (isEvidenceOpen) openSinglePanel('none');
+                else openSinglePanel('evidence');
+              }}
+              isEvidenceOpen={isEvidenceOpen}
+              dataQualityScore={analysisData?.summary.dataQualityScore}
+            />
+          )}
+
+          {/* Canvas & Overlays within the Box */}
+          <div className="map-box-canvas-viewport">
+            <div className="app-canvas-container">
+              <RoadScene
+                progress={progress}
+                isPlaying={isPlaying}
+                onProgressChange={handleSlider}
+                cameraMode={cameraMode}
+                lightingMode={lightingMode}
+                mode={mode}
+                demoPlan={demoPlan}
+                realLocationData={realLocationData}
+                layers={layers}
+                analysisData={isAnalysisActive ? analysisData : null}
+                analysisFilter={analysisFilter}
+                candidatePlan={selectedPlan}
+                strategy={selectedStrategy}
+                planningViewState={planningViewState}
+                focusTarget={focusTarget}
+                selectedRoad={selectedRoad}
+                selectedIssue={selectedIssue}
+                onSelectIssue={handleInspectIssue}
+                onSelectRoad={handleInspectRoad}
+                onSelectJunction={handleInspectJunction}
+                transformationState={transformationState}
+                transformationProgress={transformationProgress}
+                transformationSpeed={transformationSpeed}
+                transformationComparison={transformationComparison}
+                transformationHorizon={transformationHorizon}
+                forecastData={forecastData}
+                isTransformationPlaying={isTransformationPlaying}
+                onTransformationPhaseChange={handleTransformationPhaseChange}
+                onTransformationComplete={handleTransformationComplete}
+                onTransformationStateChange={handleTransformationStateChange}
+                transformCameraPreset={transformCameraPreset}
+                roadSensorPreset={roadSensorPreset}
+                roadSensorTrigger={roadSensorTrigger}
+                roadSensorAdaptiveMode={roadSensorAdaptiveMode}
+                onRoadSensorTelemetry={setRoadSensorTelemetry}
+              />
+            </div>
+
+            {/* Floating Minimal UI Overlays (Framed inside 3D Box) */}
+            <div className="app-overlay-layer">
 
         {/* Minimal Loading Step Indicator */}
         <LoadingIndicator step={loadingStep} />
 
-        {/* Civil Plan Visualization Switcher: 4-Lane Highway, Flyover, Ring Road */}
-        {mode === 'demo' && (
+        {/* Civil Plan Visualization Switcher: 4-Lane Highway, Flyover, Ring Road (BUILD mode only) */}
+        {mainNavMode === 'build' && (
           <PlanSelectionBar
             currentPlan={demoPlan}
             onSelectPlan={(plan) => {
-              setDemoPlan(plan);
+              handleSelectDemoPlan(plan);
               handleReset();
             }}
             onOpenSpecs={() => setShowSpecsModal(true)}
@@ -789,22 +1042,18 @@ export default function App() {
           />
         )}
 
-        {/* Top-Left Status Panel: Real Location (primary) vs Demo */}
-        <div className="floating-status-anchor">
-          {mode === 'demo' ? (
-            <CompactStatus progress={progress} />
-          ) : (
-            realLocationData && (
-              <RealLocationStatus
-                data={realLocationData}
-                onReturnToDemo={() => setMode('demo')}
-              />
-            )
-          )}
-        </div>
+        {/* Top-Left Status Panel: Real Location only (ROUTE mode only) */}
+        {mainNavMode === 'route' && realLocationData && (
+          <div className="floating-status-anchor">
+            <RealLocationStatus
+              data={realLocationData}
+              onReturnToDemo={() => handleSelectNavMode('build')}
+            />
+          </div>
+        )}
 
-        {/* Bottom Timeline Scrubber (Active STRICTLY in Demo Mode) */}
-        {mode === 'demo' && (
+        {/* Bottom Timeline Scrubber (Active STRICTLY in BUILD Civil Plans) */}
+        {mainNavMode === 'build' && (
           <div className="floating-timeline-anchor">
             <Timeline
               progress={progress}
@@ -977,10 +1226,27 @@ export default function App() {
           <PlanSpecsModal
             currentPlan={demoPlan}
             onSelectPlan={(plan) => {
-              setDemoPlan(plan);
+              handleSelectDemoPlan(plan);
               handleReset();
             }}
             onClose={() => setShowSpecsModal(false)}
+          />
+        )}
+
+        {/* Smart Signal Junction & Piezoresistive Road Sensor Panel (FLOW mode only) */}
+        {mainNavMode === 'flow' && isRoadSensorOpen && (
+          <RoadSensorPanel
+            isOpen={isRoadSensorOpen}
+            onClose={() => {
+              setIsRoadSensorOpen(false);
+            }}
+            telemetry={roadSensorTelemetry}
+            onTriggerPress={(approach) => setRoadSensorTrigger({ approach, timestamp: Date.now() })}
+            onFocusCamera={(preset) => setRoadSensorPreset({ preset, timestamp: Date.now() })}
+            onToggleAdaptive={(enabled) => {
+              setRoadSensorAdaptiveMode(enabled);
+              setRoadSensorTelemetry(prev => ({ ...prev, adaptiveMode: enabled }));
+            }}
           />
         )}
 
@@ -1003,6 +1269,7 @@ export default function App() {
                 : 'Corridor Modernization Fulfilled (2026 — 2030)'}
             </p>
             <button
+
               className="neumorphic-btn neumorphic-btn--primary hero-completion-card__btn"
               onClick={handleReset}
             >
@@ -1010,7 +1277,16 @@ export default function App() {
             </button>
           </div>
         )}
-      </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      )}
+
+      {/* ── Scroll-Down Project Information Website: Flow, Build, Route ── */}
+      <ProjectInfoSection onScrollToTop={handleScrollToTop} />
     </div>
   );
 }
+
+

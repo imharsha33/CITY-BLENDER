@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GeoAreaResponse, LayerVisibility } from '../types/geo';
 import { GeoCoordinateSystem } from './GeoCoordinateSystem';
 import { RoadNetworkManager } from './RoadNetworkManager';
+import { RealTrafficSimulation } from './RealTrafficSimulation';
 import { buildRealBuildings } from '../components/Scene/RealBuildings';
 import { buildRealWaterFeatures } from '../components/Scene/RealWater';
 import { buildRealPOIMarkers } from '../components/Scene/RealPOIs';
@@ -19,6 +20,7 @@ export interface GeoBounds {
 export class RealLocationManager {
   rootGroup: THREE.Group;
   roadNetMgr: RoadNetworkManager;
+  trafficSim: RealTrafficSimulation;
   private buildingsGroup: THREE.Group | null = null;
   private waterGroup: THREE.Group | null = null;
   private poisGroup: THREE.Group | null = null;
@@ -34,7 +36,10 @@ export class RealLocationManager {
     this.rootGroup.visible = false;
     this.roadNetMgr = new RoadNetworkManager();
     this.rootGroup.add(this.roadNetMgr.rootGroup);
+    this.trafficSim = new RealTrafficSimulation();
+    this.rootGroup.add(this.trafficSim.rootGroup);
   }
+
 
   async fetchGeoArea(
     lat: number,
@@ -139,14 +144,17 @@ export class RealLocationManager {
 
     // Authentic dynamic terrain mesh sized exactly to the active geographic extent
     const groundSize = Math.max(1600, maxSpan * 2.8);
-    const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 32, 32);
-    const groundMat = new THREE.MeshLambertMaterial({
-      color: 0x1b1e22, // Sleek, modern civil engineering digital twin slate ground
+    const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 16, 16);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0xf2efe9, // Google Maps crisp light land canvas
+      roughness: 0.96,
+      metalness: 0.02,
     });
     this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
     this.groundMesh.name = 'real-ground-plane';
     this.groundMesh.rotation.x = -Math.PI / 2;
-    this.groundMesh.position.set(centerX, -0.02, centerZ);
+    this.groundMesh.position.set(centerX, -0.01, centerZ);
+
     this.groundMesh.receiveShadow = true;
     this.rootGroup.add(this.groundMesh);
 
@@ -154,6 +162,12 @@ export class RealLocationManager {
     this.roadNetMgr.buildNetwork(data.roads, this.coordSystem);
     if (!this.rootGroup.children.includes(this.roadNetMgr.rootGroup)) {
       this.rootGroup.add(this.roadNetMgr.rootGroup);
+    }
+
+    // 1b. Real City Traffic Simulation (Living multi-agent traffic across road geometry)
+    this.trafficSim.buildSimulation(data.roads, this.coordSystem);
+    if (!this.rootGroup.children.includes(this.trafficSim.rootGroup)) {
+      this.rootGroup.add(this.trafficSim.rootGroup);
     }
 
     // 2. Buildings
@@ -171,8 +185,13 @@ export class RealLocationManager {
     this.rootGroup.visible = true;
   }
 
+  update(delta: number): void {
+    this.trafficSim.update(delta);
+  }
+
   setLayerVisibility(visibility: LayerVisibility): void {
     this.roadNetMgr.setVisible(visibility.roads);
+    this.trafficSim.setVisible(visibility.roads);
     if (this.buildingsGroup) this.buildingsGroup.visible = visibility.buildings;
     if (this.waterGroup) this.waterGroup.visible = visibility.water;
     if (this.poisGroup) this.poisGroup.visible = visibility.pois;
@@ -192,12 +211,14 @@ export class RealLocationManager {
 
   clear(): void {
     this.roadNetMgr.clear();
+    this.trafficSim.clear();
 
     if (this.groundMesh) {
       this.rootGroup.remove(this.groundMesh);
       this.groundMesh.geometry?.dispose();
       this.groundMesh = null;
     }
+
 
     if (this.buildingsGroup) {
       this.rootGroup.remove(this.buildingsGroup);
