@@ -346,9 +346,12 @@ export default function App() {
 
       const url = `/api/geo-area?lat=${loc.latitude}&lon=${loc.longitude}&radius=2.0&name=${encodeURIComponent(loc.displayName)}`;
       const res = await fetch(url);
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || 'REAL DATA UNAVAILABLE: OpenStreetMap servers returned an error.');
+      const contentType = res.headers.get('content-type') || '';
+
+      if (!res.ok || !contentType.includes('application/json')) {
+        console.warn('Backend API unavailable on current host environment (HTTP ' + res.status + ').');
+        setLoadingStep('idle');
+        return;
       }
 
       setLoadingStep('LOADING ENVIRONMENT');
@@ -361,9 +364,8 @@ export default function App() {
       setTimeout(() => setLoadingStep('idle'), 800);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('Location load error:', msg);
+      console.warn('Location load note:', msg);
       setLoadingStep('idle');
-      alert(`REAL DATA UNAVAILABLE\n\n${msg}\n\nPlease check your internet connection or use [IMPORT MAP] to upload a local GeoJSON, KML, or Shapefile.`);
     } finally {
       setIsSearching(false);
     }
@@ -396,16 +398,10 @@ export default function App() {
     setTimeout(() => setLoadingStep('idle'), 800);
   }, [handlePause]);
 
-  // On App Launch: Preload primary demonstration city (Madurai, Tamil Nadu) in background without leaving home front page
+  // On App Launch: Clean initial mount on front page (no unnecessary background network requests)
   useEffect(() => {
-    handleSelectLocation({
-      id: 'madurai-city-tamilnadu',
-      displayName: 'Madurai, Tamil Nadu, India',
-      name: 'Madurai',
-      latitude: 9.9261,
-      longitude: 78.1141,
-    }, false); // false ensures mainNavMode remains 'home' on initial page load / refresh
-  }, [handleSelectLocation]);
+    // Front page is active on startup
+  }, []);
 
 
   // Phase 3: Run Intelligent Infrastructure Problem Analysis
