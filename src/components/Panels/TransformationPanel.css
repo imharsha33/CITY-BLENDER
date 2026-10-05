@@ -1,0 +1,520 @@
+/* Phase 7 Transformation Panel Styles — Professional Civil Engineering Theme */
+
+.transform-panel-root {
+  position: absolute;
+  top: 76px;
+  right: 18px;
+  width: 440px;
+  max-height: calc(100vh - 100px);
+  background: #14171d;
+  border: 1px solid #2a303c;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  z-index: 120;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+}
+
+.transform-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  background: #181d24;
+  border-bottom: 1px solid #262c37;
+}
+
+.transform-panel__title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transform-panel__badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #f59e0b;
+  text-transform: uppercase;
+}
+
+.transform-panel__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.transform-panel__subtitle {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.transform-panel__close-btn {
+  background: transparent;
+  border: 1px solid #333d4d;
+  border-radius: 4px;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.transform-panel__close-btn:hover {
+  background: #232a35;
+  color: #ffffff;
+  border-color: #4b5563;
+}
+
+.transform-panel__body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #333d4d #14171d;
+}
+
+.transform-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transform-section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transform-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.transform-meta-tag {
+  font-size: 10px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* State buttons grid */
+.transform-state-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.transform-state-btn {
+  background: #1a202a;
+  border: 1px solid #28313e;
+  border-radius: 5px;
+  color: #94a3b8;
+  padding: 8px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.transform-state-btn:hover {
+  background: #222936;
+  color: #e2e8f0;
+  border-color: #374254;
+}
+
+.transform-state-btn--active {
+  background: #262216;
+  border-color: #f59e0b;
+  color: #fcd34d;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+.transform-state-btn__indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.transform-state-btn--active .transform-state-btn__indicator {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+/* Strategy card */
+.transform-strategy-card {
+  background: #191f28;
+  border: 1px solid #2d3644;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transform-strategy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transform-strategy-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.transform-strategy-horizon {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.transform-strategy-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.transform-strategy-why {
+  margin: 0;
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.transform-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #28303d;
+}
+
+.transform-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transform-metric-k {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+.transform-metric-v {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+/* Compare group */
+.transform-compare-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.transform-compare-btn {
+  background: #181d24;
+  border: 1px solid #2a323f;
+  border-radius: 4px;
+  color: #94a3b8;
+  padding: 6px 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.transform-compare-btn:hover {
+  background: #202732;
+  color: #ffffff;
+}
+
+.transform-compare-btn--active {
+  background: #1c2833;
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* Construction Box */
+.transform-construction-box {
+  background: #181c22;
+  border: 1px solid #2d3542;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transform-phase-step-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f59e0b;
+  font-family: monospace;
+}
+
+.transform-phase-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transform-phase-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transform-phase-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.transform-phase-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f59e0b;
+  font-family: monospace;
+}
+
+.transform-phase-desc {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.transform-equipment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.transform-equipment-label {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.transform-equipment-chip {
+  background: #242c38;
+  border: 1px solid #354050;
+  border-radius: 3px;
+  font-size: 9.5px;
+  color: #cbd5e1;
+  padding: 2px 5px;
+}
+
+.transform-progress-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: #252b36;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.transform-progress-bar-fill {
+  height: 100%;
+  background: #f59e0b;
+  transition: width 0.1s linear;
+}
+
+.transform-scrubber {
+  width: 100%;
+  accent-color: #f59e0b;
+  cursor: pointer;
+  margin: 0;
+}
+
+.transform-playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.transform-ctrl-btn {
+  background: #202632;
+  border: 1px solid #333d4e;
+  border-radius: 4px;
+  color: #cbd5e1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.transform-ctrl-btn:hover {
+  background: #2a3342;
+  color: #ffffff;
+}
+
+.transform-ctrl-btn--primary {
+  background: #2b2518;
+  border-color: #f59e0b;
+  color: #fcd34d;
+  flex: 1;
+}
+
+.transform-ctrl-btn--primary:hover {
+  background: #38301c;
+}
+
+.transform-speed-selector {
+  display: flex;
+  gap: 2px;
+  background: #14171d;
+  border: 1px solid #28303d;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.transform-speed-btn {
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 5px;
+  cursor: pointer;
+}
+
+.transform-speed-btn:hover {
+  color: #cbd5e1;
+}
+
+.transform-speed-btn--active {
+  background: #27303d;
+  color: #38bdf8;
+}
+
+/* Future Horizon Group */
+.transform-horizon-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.transform-horizon-btn {
+  background: #1a1f28;
+  border: 1px solid #293240;
+  border-radius: 4px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.transform-horizon-btn:hover {
+  background: #222936;
+  border-color: #384556;
+}
+
+.transform-horizon-btn--active {
+  background: #1c2725;
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.transform-horizon-sub {
+  font-size: 8.5px;
+  font-weight: 400;
+  color: #64748b;
+}
+
+.transform-horizon-btn--active .transform-horizon-sub {
+  color: #6ee7b7;
+}
+
+/* Camera presets grid */
+.transform-cam-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.transform-cam-btn {
+  background: #191f27;
+  border: 1px solid #29313e;
+  border-radius: 4px;
+  color: #94a3b8;
+  padding: 6px 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.transform-cam-btn:hover {
+  background: #222934;
+  color: #ffffff;
+  border-color: #3c485a;
+}
+
+/* Engineering Disclaimer */
+.transform-disclaimer-box {
+  display: flex;
+  gap: 8px;
+  background: #181714;
+  border: 1px solid #362e1d;
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.transform-disclaimer-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.transform-disclaimer-text {
+  margin: 0;
+  font-size: 9px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.transform-disclaimer-text strong {
+  color: #f59e0b;
+}
