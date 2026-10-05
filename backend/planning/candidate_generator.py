@@ -631,15 +631,16 @@ def generate_candidate_plans(
 
             connector_segments = [ProposedRoadSegment(
                 id="prop-connector-relief",
-                name="Peripheral Relief Connector Road",
+                name="4-Lane Orbital Ring Road & Peripheral Bypass",
                 type="connector",
                 geometry=connector_pts,
-                lanes=2,
-                widthMeters=8.5,
+                lanes=4,
+                widthMeters=15.0,
                 isElevated=False,
                 elevationMeters=0.0,
                 curbType="standard",
-                hasMedian=False,
+                hasMedian=True,
+                medianWidth=2.0,
             )]
 
             feas_status, feas_reason = evaluate_plan_feasibility(
@@ -657,7 +658,7 @@ def generate_candidate_plans(
             )
 
             explanation = generate_plan_explanation(
-                "Peripheral Relief Connector Road",
+                "4-Lane Orbital Ring Road & Peripheral Bypass",
                 "CONNECTOR_ROAD",
                 title,
                 primary_issue or {},
@@ -685,26 +686,27 @@ def generate_candidate_plans(
                 centrality=85.0,
                 junction_conflict_score=50.0,
             )
-            why_d = generate_engineering_why_selected("CONNECTOR_ROAD", ev_d, "Peripheral Corridor")
+            why_d = generate_engineering_why_selected("CONNECTOR_ROAD", ev_d, "Orbital Ring Corridor")
             rej_d = [RejectedAlternative(**r) for r in generate_rejected_alternatives("CONNECTOR_ROAD", ev_d)]
 
             candidates.append(CandidatePlan(
                 id="plan-opt-connector-relief",
-                name="Peripheral Relief Connector Road",
+                name="4-Lane Orbital Ring Road & Peripheral Bypass",
                 interventionType="CONNECTOR_ROAD",
                 status=feas_status,
                 feasibilityReason=feas_reason,
-                problemAddressed=f"Diverts through-traffic away from congested town core corridor.",
-                whyThisLocation="Connects peripheral arterial nodes to create redundant alternative routing.",
+                problemAddressed=f"Diverts heavy freight and through-traffic away from congested town core corridor.",
+                whyThisLocation="Connects peripheral arterial nodes along an orbital beltway to provide redundant alternative routing.",
                 proposedGeometry=connector_segments,
                 sourceRoadIds=[road_a.get("id"), road_b.get("id")],
                 affectedJunctionIds=[],
                 targetedIssueIds=[primary_issue.get("id")] if primary_issue else [],
                 metrics=metrics,
                 keyBenefits=[
-                    "Provides secondary redundant corridor (+90/100 connectivity gain)",
-                    "Diverts 25-35% of freight and through-traffic from congested center",
-                    "Built offline without obstructing current traffic flow",
+                    "Provides 4-lane high-speed orbital bypass corridor (+92/100 connectivity gain)",
+                    "Diverts 40-55% of heavy freight and regional traffic from congested center",
+                    "Continuous central median and outer safety barriers for high-speed operation",
+                    "Built offline without obstructing current downtown traffic flow",
                 ],
                 majorTradeoffs=[
                     "Requires greenfield / peripheral right-of-way acquisition",

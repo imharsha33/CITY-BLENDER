@@ -2,6 +2,8 @@ import React from 'react';
 import { demoScenario, PHASE_LABELS } from '../../data/demoScenario';
 import { getPhaseForProgress } from '../../engine/constructionEngine';
 
+import type { InfrastructureScenario } from '../../types/infrastructure';
+
 interface TimelineProps {
   progress: number;
   isPlaying: boolean;
@@ -12,6 +14,7 @@ interface TimelineProps {
   onReset: () => void;
   onRewind: () => void;
   onToggleFast: () => void;
+  scenario?: InfrastructureScenario;
 }
 
 export const Timeline: React.FC<TimelineProps> = ({
@@ -24,13 +27,20 @@ export const Timeline: React.FC<TimelineProps> = ({
   onReset,
   onRewind,
   onToggleFast,
+  scenario = demoScenario,
 }) => {
-  const { startYear, endYear } = demoScenario.timeline;
-  const currentPhase = getPhaseForProgress(progress);
-  const phaseLabel = PHASE_LABELS[currentPhase] ?? 'Construction';
+  const { startYear, endYear } = scenario.timeline;
+  const phases = scenario.constructionPhases;
+  
+  // Resolve current active phase dynamically
+  let activePhaseObj = phases[0];
+  for (const ph of phases) {
+    if (progress >= ph.timelineStart) {
+      activePhaseObj = ph;
+    }
+  }
+  const phaseLabel = activePhaseObj?.name ?? 'Construction';
   const pct = Math.round(progress * 100);
-
-  const phases = demoScenario.constructionPhases;
 
   return (
     <div className="floating-timeline">
@@ -54,7 +64,7 @@ export const Timeline: React.FC<TimelineProps> = ({
             {phases.map(ph => (
               <button
                 key={ph.id}
-                className={`timeline-milestone-dot ${currentPhase === ph.id ? 'timeline-milestone-dot--active' : ''}`}
+                className={`timeline-milestone-dot ${activePhaseObj?.id === ph.id ? 'timeline-milestone-dot--active' : ''}`}
                 style={{ left: `${ph.timelineStart * 100}%` }}
                 title={`${ph.name} (${Math.round(ph.timelineStart * 100)}%)`}
                 onClick={() => onProgressChange(ph.timelineStart + 0.001)}

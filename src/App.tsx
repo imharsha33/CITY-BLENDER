@@ -39,6 +39,10 @@ import type {
 import { TransformationPanel } from './components/Panels/TransformationPanel';
 import type { TransformationState, ComparisonMode, ConstructionPhaseDefinition } from './types/transformation';
 import { CONSTRUCTION_PHASES } from './types/transformation';
+import { PlanSelectionBar } from './components/Panels/PlanSelectionBar';
+import { PlanSpecsModal } from './components/Panels/PlanSpecsModal';
+import type { DemoPlanType } from './data/planScenarios';
+import { SCENARIOS } from './data/planScenarios';
 import './styles/global.css';
 
 const NORMAL_SPEED = 0.00035; // ~48s full run
@@ -53,6 +57,8 @@ export default function App() {
   const [lightingMode, setLightingMode] = useState<LightingMode>('day');
   const [showDetails, setShowDetails]   = useState(false);
   const [showHero, setShowHero]         = useState(false);
+  const [demoPlan, setDemoPlan]         = useState<DemoPlanType>('four_lane');
+  const [showSpecsModal, setShowSpecsModal] = useState(false);
 
   // Phase 2 real location states (Real Location is the primary experience)
   const [mode, setMode]                         = useState<SceneMode>('real_location');
@@ -686,6 +692,7 @@ export default function App() {
           cameraMode={cameraMode}
           lightingMode={lightingMode}
           mode={mode}
+          demoPlan={demoPlan}
           realLocationData={realLocationData}
           layers={layers}
           analysisData={isAnalysisActive ? analysisData : null}
@@ -769,6 +776,19 @@ export default function App() {
         {/* Minimal Loading Step Indicator */}
         <LoadingIndicator step={loadingStep} />
 
+        {/* Civil Plan Visualization Switcher: 4-Lane Highway, Flyover, Ring Road */}
+        {mode === 'demo' && (
+          <PlanSelectionBar
+            currentPlan={demoPlan}
+            onSelectPlan={(plan) => {
+              setDemoPlan(plan);
+              handleReset();
+            }}
+            onOpenSpecs={() => setShowSpecsModal(true)}
+            isDemoMode={true}
+          />
+        )}
+
         {/* Top-Left Status Panel: Real Location (primary) vs Demo */}
         <div className="floating-status-anchor">
           {mode === 'demo' ? (
@@ -796,6 +816,7 @@ export default function App() {
               onReset={handleReset}
               onRewind={handleRewind}
               onToggleFast={handleToggleFast}
+              scenario={SCENARIOS[demoPlan]}
             />
           </div>
         )}
@@ -951,12 +972,36 @@ export default function App() {
           />
         )}
 
+        {/* Civil Plan Engineering Specifications Modal */}
+        {showSpecsModal && (
+          <PlanSpecsModal
+            currentPlan={demoPlan}
+            onSelectPlan={(plan) => {
+              setDemoPlan(plan);
+              handleReset();
+            }}
+            onClose={() => setShowSpecsModal(false)}
+          />
+        )}
+
         {/* Minimal Hero Completion Badge (Demo Mode Only) */}
         {showHero && mode === 'demo' && (
           <div className="hero-completion-card">
             <span className="hero-completion-card__badge">INFRASTRUCTURE UPGRADE COMPLETE</span>
-            <h2 className="hero-completion-card__title">1-Lane → 4-Lane Divided Carriageway</h2>
-            <p className="hero-completion-card__subtitle">Corridor Modernization Fulfilled (2026 — 2030)</p>
+            <h2 className="hero-completion-card__title">
+              {demoPlan === 'flyover'
+                ? 'Elevated Flyover Viaduct Operational'
+                : demoPlan === 'ring_road'
+                ? 'Orbital Ring Road Bypass Operational'
+                : '4-Lane Divided Carriageway Complete'}
+            </h2>
+            <p className="hero-completion-card__subtitle">
+              {demoPlan === 'flyover'
+                ? 'Dual-Level Grade Separation Complete (2026 — 2030)'
+                : demoPlan === 'ring_road'
+                ? 'Peripheral Bypass Logistics Beltway Active (2026 — 2030)'
+                : 'Corridor Modernization Fulfilled (2026 — 2030)'}
+            </p>
             <button
               className="neumorphic-btn neumorphic-btn--primary hero-completion-card__btn"
               onClick={handleReset}

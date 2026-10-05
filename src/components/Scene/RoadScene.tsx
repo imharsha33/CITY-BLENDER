@@ -58,6 +58,7 @@ interface RoadSceneProps {
   onTransformationComplete?: () => void;
   onTransformationStateChange?: (state: TransformationState) => void;
   transformCameraPreset?: { preset: 'whole_city' | 'corridor' | 'intervention' | 'street' | 'cinematic'; timestamp: number } | null;
+  demoPlan?: 'four_lane' | 'flyover' | 'ring_road';
 }
 
 export const RoadScene: React.FC<RoadSceneProps> = ({
@@ -66,6 +67,7 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
   lightingMode,
   autoCam = true,
   mode = 'demo',
+  demoPlan = 'four_lane',
   realLocationData,
   layers,
   analysisData,
@@ -139,6 +141,12 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
     if (!managerRef.current) return;
     managerRef.current.setMode(mode);
   }, [mode]);
+
+  // Sync demo plan (four_lane, flyover, ring_road)
+  useEffect(() => {
+    if (!managerRef.current || !demoPlan) return;
+    managerRef.current.setDemoPlan(demoPlan);
+  }, [demoPlan]);
 
   // Sync real location data
   useEffect(() => {

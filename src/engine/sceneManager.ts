@@ -16,6 +16,14 @@ import { createAllStreetLights, createRoadSign } from '../components/Scene/Stree
 import { buildConstructionObjects } from '../components/Scene/ConstructionObjects';
 import { applyTimeline, type AnimatedScene } from './constructionEngine';
 import { demoScenario } from '../data/demoScenario';
+import type { DemoPlanType } from '../data/planScenarios';
+import { flyoverScenario } from '../data/planScenarios';
+import {
+  buildFlyover3D,
+  buildRingRoad3D,
+  type FlyoverSceneElements,
+  type RingRoadSceneElements,
+} from '../components/Scene/PlanSceneBuilders';
 import { RealLocationManager } from './RealLocationManager';
 import { AnalysisVisualizer } from '../components/Scene/AnalysisVisualizer';
 import { ProposedInfrastructureManager } from './ProposedInfrastructureManager';
@@ -65,6 +73,10 @@ export class SceneManager {
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
 
+  private currentPlanType: DemoPlanType = 'four_lane';
+  private flyoverElements: FlyoverSceneElements | null = null;
+  private ringRoadElements: RingRoadSceneElements | null = null;
+
   constructor(canvas: HTMLCanvasElement) {
     // ── Renderer ─────────────────────────────────────────────────────────────
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -96,9 +108,6 @@ export class SceneManager {
   }
 
   private buildScene() {
-    const scenario = demoScenario;
-    const roadLen = scenario.currentState.geometry.length;
-
     // Base Environmental Lighting
     setupLighting(this.scene);
 
@@ -106,7 +115,27 @@ export class SceneManager {
     this.demoGroup.name = 'demo-infrastructure-group';
     this.scene.add(this.demoGroup);
 
-    // Demo terrain only belongs to demo mode
+    // Initial default demo: 4-lane Highway
+    this.buildFourLaneDemoSubtree();
+
+    // ── Phase 2 Real Location Root ───────────────────────────────────────────
+    this.scene.add(this.realLocationMgr.rootGroup);
+
+    // ── Phase 3 Analysis Visualizer Root ─────────────────────────────────────
+    this.scene.add(this.analysisVis.rootGroup);
+
+    // ── Phase 4 Proposed Infrastructure Root ──────────────────────────────────
+    this.scene.add(this.proposedMgr.rootGroup);
+
+    // ── Phase 7 Transformation Manager Root ──────────────────────────────────
+    this.transformMgr = new TransformationManager(this.scene, this.proposedMgr, this.camCtrl);
+  }
+
+  private buildFourLaneDemoSubtree() {
+    const scenario = demoScenario;
+    const roadLen = scenario.currentState.geometry.length;
+
+    // Demo terrain
     this.demoGroup.add(createTerrain());
 
     // Existing 1-lane road
@@ -274,18 +303,58 @@ export class SceneManager {
     };
 
     applyTimeline(this.animScene, 0);
+  }
 
-    // ── Phase 2 Real Location Root ───────────────────────────────────────────
-    this.scene.add(this.realLocationMgr.rootGroup);
+  private buildFlyoverDemoSubtree() {
+    this.demoGroup.add(createTerrain());
+    const elements = buildFlyover3D();
+    this.flyoverElements = elements;
+    this.demoGroup.add(elements.group);
+    this.demoGroup.add(createAllBuildings(flyoverScenario.buildings));
+    this.demoGroup.add(createAllTrees(flyoverScenario.trees));
+    this.vehicles = elements.vehicles;
+    this.applyFlyoverTimeline(elements, 0);
+  }
 
-    // ── Phase 3 Analysis Visualizer Root ─────────────────────────────────────
-    this.scene.add(this.analysisVis.rootGroup);
+  private buildRingRoadDemoSubtree() {
+    this.demoGroup.add(createTerrain());
+    const elements = buildRingRoad3D();
+    this.ringRoadElements = elements;
+    this.demoGroup.add(elements.group);
+    this.vehicles = elements.vehicles;
+    this.applyRingRoadTimeline(elements, 0);
+  }
 
-    // ── Phase 4 Proposed Infrastructure Root ──────────────────────────────────
-    this.scene.add(this.proposedMgr.rootGroup);
+  public setDemoPlan(plan: DemoPlanType): void {
+    if (this.currentPlanType === plan && this.demoGroup.children.length > 0) return;
+    this.currentPlanType = plan;
 
-    // ── Phase 7 Transformation Manager Root ──────────────────────────────────
-    this.transformMgr = new TransformationManager(this.scene, this.proposedMgr, this.camCtrl);
+    // Clear previous demo subtree
+    while (this.demoGroup.children.length > 0) {
+      const child = this.demoGroup.children[0];
+      this.demoGroup.remove(child);
+    }
+    this.vehicles = [];
+    this.animScene = null;
+    this.flyoverElements = null;
+    this.ringRoadElements = null;
+
+    if (plan === 'four_lane') {
+      this.buildFourLaneDemoSubtree();
+      this.camCtrl.flyTo(new THREE.Vector3(0, 80, 60), new THREE.Vector3(0, 0, 0), 1.5);
+    } else if (plan === 'flyover') {
+      this.buildFlyoverDemoSubtree();
+      this.camCtrl.flyTo(new THREE.Vector3(36, 32, -60), new THREE.Vector3(0, 5, 0), 1.6);
+    } else if (plan === 'ring_road') {
+      this.buildRingRoadDemoSubtree();
+      this.camCtrl.flyTo(new THREE.Vector3(0, 130, 90), new THREE.Vector3(0, 0, -20), 1.6);
+    }
+
+    this.setProgress(this._progress);
+  }
+
+  public getDemoPlan(): DemoPlanType {
+    return this.currentPlanType;
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -584,10 +653,135 @@ export class SceneManager {
     return null;
   }
 
+  private applyFlyoverTimeline(elem: FlyoverSceneElements, p: number) {
+    elem.surfaceRoads.visible = true;
+    elem.piersGroup.visible = p >= 0.28;
+    elem.approachRampSouth.visible = p >= 0.48;
+    elem.approachRampNorth.visible = p >= 0.48;
+    elem.elevatedDeck.visible = p >= 0.52;
+    elem.barriersGroup.visible = p >= 0.72;
+    elem.medianGroup.visible = p >= 0.78;
+    elem.markingsGroup.visible = p >= 0.84;
+    elem.elevatedLights.visible = p >= 0.90;
+  }
+
+  private applyRingRoadTimeline(elem: RingRoadSceneElements, p: number) {
+    elem.buildings.visible = true;
+    elem.radialRoads.visible = true;
+    elem.roundabouts.visible = p >= 0.35;
+    elem.orbitalRingPavement.visible = p >= 0.55;
+    elem.orbitalMedian.visible = p >= 0.75;
+    elem.orbitalBarriers.visible = p >= 0.80;
+    elem.lights.visible = p >= 0.88;
+  }
+
+  private updateFlyoverVehicles(delta: number) {
+    const DECK_ELEVATION = 6.8;
+    const HALF_LEN = 110;
+
+    this.vehicles.forEach(v => {
+      const visible = this._progress < 0.18 || this._progress >= 0.84;
+      v.group.visible = visible;
+      if (!visible) return;
+
+      if (v.config.laneIndex >= 4) {
+        // Surface crossroad traffic along X axis
+        const speed = v.config.speed * delta * 60;
+        const dir = v.config.direction;
+        let curX = v.group.position.x + dir * speed;
+        if (curX > 60) curX = -60;
+        if (curX < -60) curX = 60;
+        v.group.position.set(curX, 0.15, v.config.laneIndex === 4 ? -4 : 4);
+        v.group.rotation.y = dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+      } else {
+        // Elevated express flyover traffic along Z axis
+        const speed = v.config.speed * delta * 60;
+        const dir = v.config.direction;
+        v.currentZ += dir * speed;
+        if (v.currentZ > HALF_LEN) v.currentZ = -HALF_LEN;
+        if (v.currentZ < -HALF_LEN) v.currentZ = HALF_LEN;
+
+        let y = 0.2;
+        let pitch = 0;
+        const z = v.currentZ;
+
+        if (z >= -36 && z <= 36) {
+          y = DECK_ELEVATION + 0.35;
+          pitch = 0;
+        } else if (z > -90 && z < -36) {
+          const t = (z - (-90)) / 54;
+          y = 0.2 + t * DECK_ELEVATION;
+          pitch = Math.atan2(DECK_ELEVATION, 54) * (dir === 1 ? -1 : 1);
+        } else if (z > 36 && z < 90) {
+          const t = (z - 36) / 54;
+          y = DECK_ELEVATION + 0.35 - t * DECK_ELEVATION;
+          pitch = Math.atan2(DECK_ELEVATION, 54) * (dir === 1 ? 1 : -1);
+        }
+
+        const laneXOffsets = [-3.8, -1.8, 1.8, 3.8];
+        const laneX = laneXOffsets[Math.min(v.config.laneIndex, 3)];
+
+        v.group.position.set(laneX, y, z);
+        v.group.rotation.y = dir === 1 ? 0 : Math.PI;
+        v.group.rotation.x = pitch;
+      }
+    });
+  }
+
+  private updateRingRoadVehicles(delta: number) {
+    const RADIUS = 68.0;
+    const START_ANGLE = -Math.PI * 0.85;
+    const END_ANGLE = Math.PI * 0.25;
+    const ARC_SPAN = END_ANGLE - START_ANGLE;
+
+    this.vehicles.forEach((v, idx) => {
+      const visible = this._progress < 0.18 || this._progress >= 0.82;
+      v.group.visible = visible;
+      if (!visible) return;
+
+      if (v.config.laneIndex === 4) {
+        // Feeder road traffic heading towards roundabout
+        const speed = v.config.speed * delta * 45;
+        v.currentZ += speed;
+        if (v.currentZ > 45) v.currentZ = -10;
+        v.group.position.set(-v.currentZ * 0.6, 0.15, -v.currentZ * 0.8);
+        v.group.rotation.y = Math.PI * 0.6;
+      } else {
+        const laneOffsets = [-4.5, -1.5, 1.5, 4.5];
+        const laneR = RADIUS + laneOffsets[Math.min(v.config.laneIndex, 3)];
+        const dir = v.config.direction;
+        const speed = v.config.speed * delta * 0.75;
+
+        const anyV = v as unknown as { currentAngle?: number };
+        if (anyV.currentAngle === undefined) {
+          anyV.currentAngle = START_ANGLE + ((idx * 0.22) % ARC_SPAN);
+        }
+
+        anyV.currentAngle += (dir * speed);
+        if (anyV.currentAngle > END_ANGLE) anyV.currentAngle = START_ANGLE;
+        if (anyV.currentAngle < START_ANGLE) anyV.currentAngle = END_ANGLE;
+
+        const a = anyV.currentAngle;
+        const x = Math.cos(a) * laneR;
+        const z = Math.sin(a) * laneR;
+
+        v.group.position.set(x, 0.2, z);
+        const tangentAngle = dir === 1 ? -a : -a + Math.PI;
+        v.group.rotation.y = tangentAngle;
+      }
+    });
+  }
+
   setProgress(p: number) {
     this._progress = Math.max(0, Math.min(1, p));
-    if (this.animScene && this.currentMode === 'demo') {
-      applyTimeline(this.animScene, this._progress);
+    if (this.currentMode === 'demo') {
+      if (this.currentPlanType === 'four_lane' && this.animScene) {
+        applyTimeline(this.animScene, this._progress);
+      } else if (this.currentPlanType === 'flyover' && this.flyoverElements) {
+        this.applyFlyoverTimeline(this.flyoverElements, this._progress);
+      } else if (this.currentPlanType === 'ring_road' && this.ringRoadElements) {
+        this.applyRingRoadTimeline(this.ringRoadElements, this._progress);
+      }
     }
     if (!this.userLighting) {
       if (this._progress >= 0.95 && this.currentMode === 'demo') {
@@ -629,16 +823,22 @@ export class SceneManager {
         this.analysisVis.updateAnimation(time);
       }
 
-      // Only update demo vehicles when demo scene is active
+      // Update demo vehicles when demo scene is active
       if (this.currentMode === 'demo' && this.vehicles.length) {
-        updateVehicles(
-          this.vehicles,
-          delta,
-          this._progress,
-          this.laneOffsets1,
-          this.laneOffsets4,
-          demoScenario.currentState.geometry.length
-        );
+        if (this.currentPlanType === 'four_lane') {
+          updateVehicles(
+            this.vehicles,
+            delta,
+            this._progress,
+            this.laneOffsets1,
+            this.laneOffsets4,
+            demoScenario.currentState.geometry.length
+          );
+        } else if (this.currentPlanType === 'flyover') {
+          this.updateFlyoverVehicles(delta);
+        } else if (this.currentPlanType === 'ring_road') {
+          this.updateRingRoadVehicles(delta);
+        }
       }
 
       this.renderer.render(this.scene, this.camera);
