@@ -541,16 +541,6 @@
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
 }
 
-@media (max-width: 768px) {
-  .front-metrics-strip {
-    flex-direction: column;
-    gap: 20px;
-  }
-  .metric-divider {
-    display: none;
-  }
-}
-
 .metric-box {
   display: flex;
   flex-direction: column;
@@ -584,3 +574,112 @@
   height: 40px;
   background: #e2e8f0;
 }
+
+/* ── Mobile Phone Responsive Polish ─────────────────────────── */
+@media (max-width: 768px) {
+  .front-page-container {
+    padding: 16px 12px 48px;
+    gap: 24px;
+  }
+
+  .hero-banner-frame {
+    border-radius: 3px;
+  }
+
+  .hero-overlay-bar {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .hero-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .front-hero-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .front-hero-btn {
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  .front-spotlight-section {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .spotlight-tab-bar {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .spotlight-tab {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 8px 12px;
+    font-size: 11.5px;
+  }
+
+  .spotlight-meta-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .meta-title {
+    font-size: 14px;
+  }
+
+  .meta-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .front-pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .pillar-card-image-wrap {
+    height: 180px;
+  }
+
+  .pillar-card-content {
+    padding: 16px 18px;
+  }
+
+  .front-metrics-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 18px 16px;
+  }
+
+  .metric-divider {
+    display: none;
+  }
+
+  .metric-num {
+    font-size: 24px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 440px) {
+  .front-hero-actions {
+    grid-template-columns: 1fr;
+  }
+}
+

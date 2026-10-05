@@ -1558,37 +1558,136 @@ button {
 
 /* ── Responsive Adjustments ────────────────────────────────── */
 @media (max-width: 768px) {
-  .floating-header {
-    top: 10px;
-    left: 12px;
-    right: 12px;
+  .app-top-nav-bar {
+    height: 56px;
+    padding: 0 12px;
   }
 
-  .floating-header__controls .phase-indicator {
-    display: none;
+  .floating-header {
+    gap: 8px;
+  }
+
+  .brand-logo-img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .brand-text__title {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  .brand-text__tagline {
+    display: none; /* Hide tagline on mobile navbar to keep layout clean and centered */
+  }
+
+  .top-nav-pillars {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .nav-single-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+  }
+
+  .nav-about-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+  }
+
+  .nav-back-btn {
+    padding: 5px 10px;
+    font-size: 10.5px;
+  }
+
+  .map-box-wrapper {
+    padding: 8px 10px;
+  }
+
+  .map-box-frame {
+    height: calc(100vh - 72px);
+    min-height: 440px;
+  }
+
+  .map-box-viewport-header {
+    padding: 8px 12px;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .map-box-back-btn {
+    padding: 4px 10px;
+    font-size: 10px;
+  }
+
+  .map-active-plan-pill {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .road-sensor-panel-root {
+    top: 6px;
+    right: 6px;
+    left: 6px;
+    width: auto;
+    max-height: calc(100% - 12px);
   }
 
   .floating-status-anchor {
-    top: 60px;
-    left: 12px;
+    top: 50px;
+    left: 8px;
   }
 
   .compact-status {
-    padding: 6px 10px;
-  }
-
-  .compact-status__row {
-    gap: 8px;
+    padding: 6px 8px;
+    font-size: 10px;
   }
 
   .floating-timeline-anchor {
-    bottom: 16px;
-    width: 94vw;
+    bottom: 12px;
+    width: 96vw;
   }
 
   .floating-timeline {
-    padding: 10px 14px;
-    gap: 8px;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 440px) {
+  .app-top-nav-bar {
+    padding: 0 8px;
+  }
+
+  .floating-header {
+    gap: 4px;
+  }
+
+  .brand-text__title {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  .brand-logo-img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .nav-single-btn {
+    padding: 5px 6px;
+    font-size: 10px;
+  }
+
+  .nav-about-btn {
+    padding: 5px 8px;
+    font-size: 10px;
   }
 }
 

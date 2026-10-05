@@ -716,3 +716,123 @@
   color: #ffffff;
   font-weight: 800;
 }
+
+/* ── Mobile Phone Responsive Polish ─────────────────────────── */
+@media (max-width: 768px) {
+  .project-info-section {
+    padding: 40px 14px 64px;
+  }
+
+  .project-info-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .project-info-badge {
+    justify-content: center;
+  }
+
+  .project-back-to-sim-btn {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .project-info-hero__title {
+    font-size: 28px;
+  }
+
+  .project-info-hero__subtitle {
+    font-size: 13.5px;
+  }
+
+  .project-card {
+    padding: 20px 16px;
+    gap: 14px;
+  }
+
+  .card-title {
+    font-size: 18px;
+  }
+
+  .card-lead {
+    font-size: 13.5px;
+  }
+
+  .concept-exec-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .one-sentence-quote {
+    font-size: 13.5px;
+    padding: 14px 16px;
+  }
+
+  /* Vertical Pipeline on Mobile */
+  .flow-steps-pipeline {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 16px 12px;
+  }
+
+  .pipeline-arrow {
+    transform: rotate(90deg);
+    align-self: center;
+    margin: -2px 0;
+  }
+
+  .pipeline-node {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+  }
+
+  .pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .pillar-card {
+    padding: 20px 16px;
+  }
+
+  .density-bar-row {
+    grid-template-columns: 65px 1fr auto;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .density-road-val {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .table-wrapper {
+    margin: 0 -4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .architecture-table th,
+  .architecture-table td {
+    padding: 12px 10px;
+    font-size: 11.5px;
+  }
+
+  .table-bottom-conclusion {
+    padding: 14px 16px;
+  }
+
+  .project-info-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+}
+
