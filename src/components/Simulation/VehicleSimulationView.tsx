@@ -27,8 +27,8 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     classTag: 'CLASS II',
     weightTons: 1.65,
     basePressureMpa: 1.45,
-    maxSpeedKmh: 110,
-    accel: 17.0,
+    maxSpeedKmh: 115,
+    accel: 18.0,
     brakeDecel: 30.0,
     steerResponsiveness: 2.6,
     colorHex: 0x0284c7,
@@ -41,7 +41,7 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     classTag: 'CLASS I',
     weightTons: 0.24,
     basePressureMpa: 0.48,
-    maxSpeedKmh: 130,
+    maxSpeedKmh: 135,
     accel: 24.0,
     brakeDecel: 32.0,
     steerResponsiveness: 3.5,
@@ -55,8 +55,8 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     classTag: 'CLASS II+',
     weightTons: 2.45,
     basePressureMpa: 2.15,
-    maxSpeedKmh: 105,
-    accel: 15.0,
+    maxSpeedKmh: 110,
+    accel: 16.0,
     brakeDecel: 28.0,
     steerResponsiveness: 2.3,
     colorHex: 0xd97706,
@@ -105,6 +105,7 @@ interface SensorPlateData {
 
 interface SignalHead {
   red: THREE.Mesh;
+  yellow: THREE.Mesh;
   green: THREE.Mesh;
   axis: 'NS' | 'EW';
 }
@@ -114,7 +115,7 @@ interface JunctionData {
   name: string;
   x: number;
   z: number;
-  currentPhase: 'NS_GREEN' | 'EW_GREEN';
+  currentPhase: 'NS_GREEN' | 'NS_YELLOW' | 'EW_GREEN' | 'EW_YELLOW';
   tcuTimer: number;
   cleared: boolean;
   signals: SignalHead[];
@@ -166,11 +167,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
   const [detectedVehicleName, setDetectedVehicleName] = useState<string>('None (Scanning)');
   const [detectedClassTag, setDetectedClassTag] = useState<string>('STANDBY');
   const [detectedWeight, setDetectedWeight] = useState<number>(0);
-  const [currentZoneName, setCurrentZoneName] = useState('Central Grand Avenue');
+  const [currentZoneName, setCurrentZoneName] = useState('Central Grand Boulevard');
   const [junctionsClearedCount, setJunctionsClearedCount] = useState(0);
   const [totalTriggers, setTotalTriggers] = useState(0);
   const [nextJunctionDist, setNextJunctionDist] = useState(0);
-  const [nextJunctionName, setNextJunctionName] = useState('J5 Grand Central');
+  const [nextJunctionName, setNextJunctionName] = useState('J13 Grand Central');
   const [crashBanner, setCrashBanner] = useState<string | null>(null);
   const [showMissions, setShowMissions] = useState<boolean>(false);
 
@@ -242,10 +243,10 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // ─── 1. Scene & Renderer (Bright Light Theme Daytime) ───────────────────
+    // ─── 1. Scene & Renderer (Bright Clean Daytime Light Theme) ──────────────
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xe8f2fc);
-    scene.fog = new THREE.FogExp2(0xe8f2fc, 0.0016);
+    scene.fog = new THREE.FogExp2(0xe8f2fc, 0.001);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(canvas.clientWidth, canvas.clientHeight);
@@ -254,21 +255,21 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // ─── 2. Camera ──────────────────────────────────────────────────────────
-    const camera = new THREE.PerspectiveCamera(54, canvas.clientWidth / canvas.clientHeight, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(54, canvas.clientWidth / canvas.clientHeight, 0.1, 2500);
     camera.position.set(0, 8, -14);
 
-    // ─── 3. Lighting (Clear Sunny Sky Light Theme) ──────────────────────────
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc8ddf0, 1.1);
+    // ─── 3. Lighting ────────────────────────────────────────────────────────
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc8ddf0, 1.15);
     scene.add(hemiLight);
 
-    const sun = new THREE.DirectionalLight(0xfffef5, 2.2);
-    sun.position.set(120, 200, -80);
+    const sun = new THREE.DirectionalLight(0xfffef5, 2.3);
+    sun.position.set(200, 350, -150);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;
     sun.shadow.mapSize.height = 2048;
     sun.shadow.camera.near = 10;
-    sun.shadow.camera.far = 800;
-    const shadowD = 220;
+    sun.shadow.camera.far = 1200;
+    const shadowD = 350;
     sun.shadow.camera.left = -shadowD;
     sun.shadow.camera.right = shadowD;
     sun.shadow.camera.top = shadowD;
@@ -276,18 +277,17 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     sun.shadow.bias = -0.0004;
     scene.add(sun);
 
-    const amb = new THREE.AmbientLight(0xffffff, 0.65);
+    const amb = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(amb);
 
-    // ─── 4. Materials (Light Theme Architecture & Civil Roadways) ────────────
+    // ─── 4. Materials (Civil Roadways & Architecture) ────────────────────────
     const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x22262d, roughness: 0.8, metalness: 0.08 });
-    const grassMat = new THREE.MeshStandardMaterial({ color: 0x5da852, roughness: 0.95 });
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x5ea854, roughness: 0.95 });
     const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xede9e1, roughness: 0.75 });
     const curbMat = new THREE.MeshStandardMaterial({ color: 0xa8a49c, roughness: 0.85 });
     const whitePaintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const yellowPaintMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
 
-    // Crisp Light Architecture
     const bldgWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
     const bldgSlateMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.5 });
     const bldgGlassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.05, metalness: 0.95 });
@@ -307,28 +307,32 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       side: THREE.DoubleSide,
     });
 
-    // ─── 5. Mini City Grid Geometry: 3x3 4-Way Intersections ────────────────
+    // ─── 5. ENLARGED MINI CITY GRID (800m x 800m — 5x5 = 25 Intersections) ──
     const ROAD_W = 16.0;
     const HALF_W = ROAD_W / 2; // 8.0m
     const LANE_OFFSET = 4.0;
 
     const NS_AVENUES = [
-      { id: 'AV_W', name: 'West Commercial Boulevard', x: -110.0 },
-      { id: 'AV_C', name: 'Central Grand Avenue', x: 0.0 },
-      { id: 'AV_E', name: 'East Innovation Boulevard', x: 110.0 },
+      { id: 'AV_W2', name: 'West Terminal Expressway', x: -280.0 },
+      { id: 'AV_W1', name: 'Financial District Avenue', x: -140.0 },
+      { id: 'AV_C',  name: 'Central Grand Boulevard', x: 0.0 },
+      { id: 'AV_E1', name: 'Innovation & Tech Corridor', x: 140.0 },
+      { id: 'AV_E2', name: 'East Bay Parkway', x: 280.0 },
     ];
 
     const EW_STREETS = [
-      { id: 'ST_N', name: 'North Tech Parkway', z: -130.0 },
-      { id: 'ST_M', name: 'Grand Metro Boulevard', z: 0.0 },
-      { id: 'ST_S', name: 'South Bayfront Promenade', z: 130.0 },
+      { id: 'ST_N2', name: 'North Uptown Way', z: -280.0 },
+      { id: 'ST_N1', name: 'University Spine', z: -140.0 },
+      { id: 'ST_M',  name: 'Grand Metropolitan Crossway', z: 0.0 },
+      { id: 'ST_S1', name: 'Civic Center Boulevard', z: 140.0 },
+      { id: 'ST_S2', name: 'South Harbor Parkway', z: 280.0 },
     ];
 
-    const CITY_SPAN_X = 360.0;
-    const CITY_SPAN_Z = 380.0;
+    const CITY_SPAN_X = 800.0;
+    const CITY_SPAN_Z = 800.0;
 
-    // Ground Terrain
-    const groundGeo = new THREE.PlaneGeometry(CITY_SPAN_X + 150, CITY_SPAN_Z + 150);
+    // Ground Plane
+    const groundGeo = new THREE.PlaneGeometry(CITY_SPAN_X + 250, CITY_SPAN_Z + 250);
     groundGeo.rotateX(-Math.PI / 2);
     const groundMesh = new THREE.Mesh(groundGeo, grassMat);
     groundMesh.position.set(0, -0.04, 0);
@@ -344,7 +348,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       road.receiveShadow = true;
       scene.add(road);
 
-      // Center Double Yellow Lines
       for (let yo of [-0.15, 0.15]) {
         const ylGeo = new THREE.PlaneGeometry(0.14, CITY_SPAN_Z);
         ylGeo.rotateX(-Math.PI / 2);
@@ -363,7 +366,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       road.receiveShadow = true;
       scene.add(road);
 
-      // Center Double Yellow Lines
       for (let yo of [-0.15, 0.15]) {
         const ylGeo = new THREE.PlaneGeometry(CITY_SPAN_X, 0.14);
         ylGeo.rotateX(-Math.PI / 2);
@@ -373,13 +375,14 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       }
     });
 
-    // ─── 6. Build 9 Four-Way Intersections ──────────────────────────────────
+    // ─── 6. Build 25 Four-Way Intersections with 4-Way 3-Light Signals ───────
     const junctions: JunctionData[] = [];
 
     NS_AVENUES.forEach((av, xi) => {
       EW_STREETS.forEach((st, zi) => {
-        const jId = `J${xi * 3 + zi + 1}`;
-        const jName = `${jId}: ${av.name.split(' ')[0]} & ${st.name.split(' ')[0]} 4-Way Cross`;
+        const jIdx = xi * 5 + zi + 1;
+        const jId = `J${jIdx}`;
+        const jName = `${jId}: ${av.name.split(' ')[0]} & ${st.name.split(' ')[0]}`;
         const jX = av.x;
         const jZ = st.z;
 
@@ -393,6 +396,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         const sensorPlates: SensorPlateData[] = [];
         const signals: SignalHead[] = [];
 
+        // 4 Approaches (North, South, East, West)
         const APPROACHES = [
           { name: 'Northbound (S to N)', axis: 'NS' as const, cx: jX + LANE_OFFSET, cz: jZ + HALF_W + 14.0, stopZ: jZ + HALF_W + 3.0, stopX: jX + LANE_OFFSET, zebraZ: jZ + HALF_W + 1.2, zebraDir: 'EW' },
           { name: 'Southbound (N to S)', axis: 'NS' as const, cx: jX - LANE_OFFSET, cz: jZ - HALF_W - 14.0, stopZ: jZ - HALF_W - 3.0, stopX: jX - LANE_OFFSET, zebraZ: jZ - HALF_W - 1.2, zebraDir: 'EW' },
@@ -429,6 +433,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             scene.add(sb);
           }
 
+          // Piezoresistive sensor pad
           const plateGeo = new THREE.BoxGeometry(app.axis === 'NS' ? 3.4 : 6.0, 0.04, app.axis === 'NS' ? 6.0 : 3.4);
           const pBase = new THREE.Mesh(plateGeo, sensorPlateBaseMat);
           pBase.position.set(app.cx, 0.02, app.cz);
@@ -461,70 +466,71 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           });
         });
 
-        // 4-Way Traffic Signal Gantries
+        // ── 4 Dedicated Traffic Light Gantries (One on each corner facing incoming drivers) ──
         const signalHousingMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
-        const poleGeo = new THREE.CylinderGeometry(0.25, 0.32, 7.5, 16);
-        const pole1 = new THREE.Mesh(poleGeo, signalHousingMat);
-        pole1.position.set(jX + HALF_W + 1.8, 3.75, jZ + HALF_W + 1.8);
-        scene.add(pole1);
 
-        const armGeoNS = new THREE.CylinderGeometry(0.16, 0.16, 8.5, 16);
-        armGeoNS.rotateZ(Math.PI / 2);
-        const armNS = new THREE.Mesh(armGeoNS, signalHousingMat);
-        armNS.position.set(jX + HALF_W - 2.5, 7.0, jZ + HALF_W + 1.8);
-        scene.add(armNS);
+        // Helper to construct a 3-light head (Red, Yellow, Green)
+        const createSignalHead = (posX: number, posY: number, posZ: number, rotY: number, axis: 'NS' | 'EW') => {
+          const headBox = new THREE.BoxGeometry(0.6, 1.7, 0.35);
+          const head = new THREE.Mesh(headBox, signalHousingMat);
+          head.position.set(posX, posY, posZ);
+          head.rotation.y = rotY;
+          scene.add(head);
 
-        const boxNS = new THREE.BoxGeometry(0.7, 1.8, 0.4);
-        const headNS = new THREE.Mesh(boxNS, signalHousingMat);
-        headNS.position.set(jX + LANE_OFFSET, 6.2, jZ + HALF_W + 1.8);
-        scene.add(headNS);
+          const redMat = new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 0.1 });
+          const yellowMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.1 });
+          const greenMat = new THREE.MeshStandardMaterial({ color: 0x00e676, emissive: 0x00e676, emissiveIntensity: 0.1 });
 
-        const redMatNS = new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 0.2 });
-        const greenMatNS = new THREE.MeshStandardMaterial({ color: 0x00e676, emissive: 0x00e676, emissiveIntensity: 4.5 });
-        const lensRedNS = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 16), redMatNS);
-        lensRedNS.rotateX(Math.PI / 2);
-        lensRedNS.position.set(0, 0.45, 0.21);
-        headNS.add(lensRedNS);
+          // Red (Top)
+          const lensR = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.06, 16), redMat);
+          lensR.rotateX(Math.PI / 2);
+          lensR.position.set(0, 0.5, 0.18);
+          head.add(lensR);
 
-        const lensGreenNS = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 16), greenMatNS);
-        lensGreenNS.rotateX(Math.PI / 2);
-        lensGreenNS.position.set(0, -0.45, 0.21);
-        headNS.add(lensGreenNS);
+          // Yellow (Middle)
+          const lensY = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.06, 16), yellowMat);
+          lensY.rotateX(Math.PI / 2);
+          lensY.position.set(0, 0, 0.18);
+          head.add(lensY);
 
-        signals.push({ red: lensRedNS, green: lensGreenNS, axis: 'NS' });
+          // Green (Bottom)
+          const lensG = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.06, 16), greenMat);
+          lensG.rotateX(Math.PI / 2);
+          lensG.position.set(0, -0.5, 0.18);
+          head.add(lensG);
 
-        const pole2 = new THREE.Mesh(poleGeo, signalHousingMat);
-        pole2.position.set(jX - HALF_W - 1.8, 3.75, jZ - HALF_W - 1.8);
-        scene.add(pole2);
+          signals.push({ red: lensR, yellow: lensY, green: lensG, axis });
+        };
 
-        const armGeoEW = new THREE.CylinderGeometry(0.16, 0.16, 8.5, 16);
-        armGeoEW.rotateX(Math.PI / 2);
-        const armEW = new THREE.Mesh(armGeoEW, signalHousingMat);
-        armEW.position.set(jX - HALF_W - 1.8, 7.0, jZ - HALF_W + 2.5);
-        scene.add(armEW);
+        // 4 Corner Poles with cantilever heads:
+        // 1. South-East corner (faces Northbound traffic coming from South)
+        const poleGeo = new THREE.CylinderGeometry(0.22, 0.28, 7.0, 16);
+        const p1 = new THREE.Mesh(poleGeo, signalHousingMat);
+        p1.position.set(jX + HALF_W + 1.8, 3.5, jZ + HALF_W + 1.8);
+        scene.add(p1);
+        createSignalHead(jX + LANE_OFFSET, 6.0, jZ + HALF_W + 1.8, 0, 'NS'); // Faces +Z
 
-        const boxEW = new THREE.BoxGeometry(0.4, 1.8, 0.7);
-        const headEW = new THREE.Mesh(boxEW, signalHousingMat);
-        headEW.position.set(jX - HALF_W - 1.8, 6.2, jZ - LANE_OFFSET);
-        scene.add(headEW);
+        // 2. North-West corner (faces Southbound traffic coming from North)
+        const p2 = new THREE.Mesh(poleGeo, signalHousingMat);
+        p2.position.set(jX - HALF_W - 1.8, 3.5, jZ - HALF_W - 1.8);
+        scene.add(p2);
+        createSignalHead(jX - LANE_OFFSET, 6.0, jZ - HALF_W - 1.8, Math.PI, 'NS'); // Faces -Z
 
-        const redMatEW = new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 4.5 });
-        const greenMatEW = new THREE.MeshStandardMaterial({ color: 0x00e676, emissive: 0x00e676, emissiveIntensity: 0.2 });
-        const lensRedEW = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 16), redMatEW);
-        lensRedEW.rotateZ(Math.PI / 2);
-        lensRedEW.position.set(-0.21, 0.45, 0);
-        headEW.add(lensRedEW);
+        // 3. South-West corner (faces Eastbound traffic coming from West)
+        const p3 = new THREE.Mesh(poleGeo, signalHousingMat);
+        p3.position.set(jX - HALF_W - 1.8, 3.5, jZ + HALF_W + 1.8);
+        scene.add(p3);
+        createSignalHead(jX - HALF_W - 1.8, 6.0, jZ + LANE_OFFSET, -Math.PI / 2, 'EW'); // Faces -X
 
-        const lensGreenEW = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 16), greenMatEW);
-        lensGreenEW.rotateZ(Math.PI / 2);
-        lensGreenEW.position.set(-0.21, -0.45, 0);
-        headEW.add(lensGreenEW);
+        // 4. North-East corner (faces Westbound traffic coming from East)
+        const p4 = new THREE.Mesh(poleGeo, signalHousingMat);
+        p4.position.set(jX + HALF_W + 1.8, 3.5, jZ - HALF_W - 1.8);
+        scene.add(p4);
+        createSignalHead(jX + HALF_W + 1.8, 6.0, jZ - LANE_OFFSET, Math.PI / 2, 'EW'); // Faces +X
 
-        signals.push({ red: lensRedEW, green: lensGreenEW, axis: 'EW' });
-
-        const tcuBodyGeo = new THREE.BoxGeometry(1.2, 2.0, 0.9);
-        const tcuBody = new THREE.Mesh(tcuBodyGeo, signalHousingMat);
-        tcuBody.position.set(jX + HALF_W + 2.2, 1.0, jZ - HALF_W - 2.2);
+        // TCU Edge Cabinet
+        const tcuBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.9), signalHousingMat);
+        tcuBody.position.set(jX + HALF_W + 2.2, 1.0, jZ + HALF_W + 2.2);
         scene.add(tcuBody);
 
         junctions.push({
@@ -533,7 +539,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           x: jX,
           z: jZ,
           currentPhase: 'NS_GREEN',
-          tcuTimer: 8.0,
+          tcuTimer: 7.5,
           cleared: false,
           signals,
           sensorPlates,
@@ -541,14 +547,29 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       });
     });
 
-    // ─── 7. Mini City Blocks & SOLID BUILDING COLLIDERS ─────────────────────
+    // ─── 7. Expansive City Blocks & Solid Building Colliders ────────────────
     const buildingColliders: BuildingCollider[] = [];
 
-    const BLOCK_BOUNDS_X = [-200, -110 - HALF_W, -110 + HALF_W, 0 - HALF_W, 0 + HALF_W, 110 - HALF_W, 110 + HALF_W, 200];
-    const BLOCK_BOUNDS_Z = [-200, -130 - HALF_W, -130 + HALF_W, 0 - HALF_W, 0 + HALF_W, 130 - HALF_W, 130 + HALF_W, 200];
+    // Block bounds for 5x5 grid (6 divisions across X and Z)
+    const BLOCK_BOUNDS_X = [
+      -380, -280 - HALF_W,
+      -280 + HALF_W, -140 - HALF_W,
+      -140 + HALF_W, 0 - HALF_W,
+      0 + HALF_W, 140 - HALF_W,
+      140 + HALF_W, 280 - HALF_W,
+      280 + HALF_W, 380,
+    ];
+    const BLOCK_BOUNDS_Z = [
+      -380, -280 - HALF_W,
+      -280 + HALF_W, -140 - HALF_W,
+      -140 + HALF_W, 0 - HALF_W,
+      0 + HALF_W, 140 - HALF_W,
+      140 + HALF_W, 280 - HALF_W,
+      280 + HALF_W, 380,
+    ];
 
-    for (let biX = 0; biX < 4; biX++) {
-      for (let biZ = 0; biZ < 4; biZ++) {
+    for (let biX = 0; biX < 6; biX++) {
+      for (let biZ = 0; biZ < 6; biZ++) {
         const xMin = BLOCK_BOUNDS_X[biX * 2];
         const xMax = BLOCK_BOUNDS_X[biX * 2 + 1];
         const zMin = BLOCK_BOUNDS_Z[biZ * 2];
@@ -571,8 +592,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         // Curbs
         const curbThick = 0.35;
         const curbHeight = 0.28;
-        const c1Geo = new THREE.BoxGeometry(bw, curbHeight, curbThick);
-        const c1 = new THREE.Mesh(c1Geo, curbMat);
+        const c1 = new THREE.Mesh(new THREE.BoxGeometry(bw, curbHeight, curbThick), curbMat);
         c1.position.set(bcX, 0.14, zMin + curbThick / 2);
         scene.add(c1);
 
@@ -580,45 +600,38 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         c2.position.set(bcX, 0.14, zMax - curbThick / 2);
         scene.add(c2);
 
-        // Skyscraper & Commercial Towers
+        // Skyscrapers & Commercial Towers
         const seed = Math.abs(Math.sin(bcX * 12.3 + bcZ * 45.6));
-        const numTowers = seed > 0.4 ? 2 : 1;
+        const numTowers = seed > 0.45 ? 2 : 1;
 
         for (let ti = 0; ti < numTowers; ti++) {
           const tw = (bw - 10) / numTowers;
           const td = bd - 12;
-          const th = 32.0 + ((seed * 100 + ti * 35) % 65);
+          const th = 32.0 + ((seed * 120 + ti * 40) % 75);
           const tx = bcX + (numTowers === 2 ? (ti === 0 ? -tw / 2 : tw / 2) : 0);
           const tz = bcZ;
 
-          const bldgGeo = new THREE.BoxGeometry(tw, th, td);
           const chosenMat = (seed + ti) % 2 > 0.7 ? bldgSlateMat : (seed + ti) % 3 === 0 ? bldgDarkMat : bldgWhiteMat;
-          const bldg = new THREE.Mesh(bldgGeo, chosenMat);
+          const bldg = new THREE.Mesh(new THREE.BoxGeometry(tw, th, td), chosenMat);
           bldg.position.set(tx, th / 2 + 0.22, tz);
           bldg.castShadow = true;
           bldg.receiveShadow = true;
           scene.add(bldg);
 
-          // Glass facade curtain wall
-          const glassGeo = new THREE.BoxGeometry(tw + 0.2, th * 0.76, td + 0.2);
-          const glass = new THREE.Mesh(glassGeo, bldgGlassMat);
+          const glass = new THREE.Mesh(new THREE.BoxGeometry(tw + 0.2, th * 0.76, td + 0.2), bldgGlassMat);
           glass.position.set(tx, th * 0.45 + 0.22, tz);
           scene.add(glass);
 
-          // HVAC & Antenna
-          const hvacGeo = new THREE.BoxGeometry(tw * 0.4, 3.5, td * 0.4);
-          const hvac = new THREE.Mesh(hvacGeo, curbMat);
+          const hvac = new THREE.Mesh(new THREE.BoxGeometry(tw * 0.4, 3.5, td * 0.4), curbMat);
           hvac.position.set(tx, th + 1.8, tz);
           scene.add(hvac);
 
-          if (th > 60) {
-            const antGeo = new THREE.CylinderGeometry(0.12, 0.3, 14.0, 8);
-            const ant = new THREE.Mesh(antGeo, sensorPlateBaseMat);
+          if (th > 65) {
+            const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, 14.0, 8), sensorPlateBaseMat);
             ant.position.set(tx, th + 8.5, tz);
             scene.add(ant);
           }
 
-          // REGISTER SOLID COLLIDER BOX FOR THIS BUILDING
           buildingColliders.push({
             minX: tx - tw / 2,
             maxX: tx + tw / 2,
@@ -627,15 +640,13 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           });
         }
 
-        // Sidewalk Street Trees
+        // Sidewalk Trees
         for (let treeSide of [-1, 1]) {
-          const treeTrunkGeo = new THREE.CylinderGeometry(0.2, 0.26, 2.8);
-          const treeTrunk = new THREE.Mesh(treeTrunkGeo, curbMat);
+          const treeTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 2.8), curbMat);
           treeTrunk.position.set(bcX + treeSide * (bw / 2 - 2.5), 1.4, bcZ);
           scene.add(treeTrunk);
 
-          const folGeo = new THREE.DodecahedronGeometry(2.0, 1);
-          const fol = new THREE.Mesh(folGeo, grassMat);
+          const fol = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0, 1), grassMat);
           fol.position.set(bcX + treeSide * (bw / 2 - 2.5), 3.8, bcZ);
           fol.castShadow = true;
           scene.add(fol);
@@ -643,7 +654,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       }
     }
 
-    // ─── 8. Active Dynamic Multi-Axis AI Traffic Flow ────────────────────────
+    // ─── 8. 32 Active AI Traffic Vehicles Circulating Seamlessly ─────────────
     const aiTraffic: AITrafficVehicle[] = [];
 
     function spawnAIVehicle(
@@ -663,13 +674,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       const laneOffset = direction === 1 ? -LANE_OFFSET : LANE_OFFSET;
 
       if (type === 'bike') {
-        const frameGeo = new THREE.BoxGeometry(0.45, 0.5, 2.0);
-        const frame = new THREE.Mesh(frameGeo, paintMat);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.5, 2.0), paintMat);
         frame.position.y = 0.55;
         vGroup.add(frame);
 
-        const riderGeo = new THREE.BoxGeometry(0.4, 0.7, 0.5);
-        const rider = new THREE.Mesh(riderGeo, glassMat);
+        const rider = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.5), glassMat);
         rider.position.set(0, 0.95, -0.1);
         vGroup.add(rider);
 
@@ -682,13 +691,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           wheels.push(w);
         });
       } else if (type === 'bus') {
-        const bGeo = new THREE.BoxGeometry(2.6, 2.8, 10.5);
-        const b = new THREE.Mesh(bGeo, paintMat);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 10.5), paintMat);
         b.position.y = 1.6;
         vGroup.add(b);
 
-        const gGeo = new THREE.BoxGeometry(2.65, 0.9, 9.8);
-        const g = new THREE.Mesh(gGeo, glassMat);
+        const g = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.9, 9.8), glassMat);
         g.position.set(0, 2.0, 0);
         vGroup.add(g);
 
@@ -703,13 +710,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           });
         });
       } else if (type === 'truck') {
-        const cabGeo = new THREE.BoxGeometry(2.3, 2.2, 2.2);
-        const cab = new THREE.Mesh(cabGeo, paintMat);
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.2, 2.2), paintMat);
         cab.position.set(0, 1.4, 2.2);
         vGroup.add(cab);
 
-        const contGeo = new THREE.BoxGeometry(2.4, 2.6, 5.5);
-        const cont = new THREE.Mesh(contGeo, new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+        const cont = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 5.5), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
         cont.position.set(0, 1.7, -1.8);
         vGroup.add(cont);
 
@@ -725,13 +730,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         });
       } else {
         const isSuv = type === 'suv';
-        const bGeo = new THREE.BoxGeometry(2.0, isSuv ? 0.8 : 0.65, 4.4);
-        const b = new THREE.Mesh(bGeo, paintMat);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(2.0, isSuv ? 0.8 : 0.65, 4.4), paintMat);
         b.position.y = 0.55;
         vGroup.add(b);
 
-        const cGeo = new THREE.BoxGeometry(1.7, isSuv ? 0.7 : 0.6, 2.4);
-        const c = new THREE.Mesh(cGeo, glassMat);
+        const c = new THREE.Mesh(new THREE.BoxGeometry(1.7, isSuv ? 0.7 : 0.6, 2.4), glassMat);
         c.position.set(0, 1.15, -0.2);
         vGroup.add(c);
 
@@ -757,7 +760,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
       scene.add(vGroup);
 
-      const targetSpeed = 12.0 + Math.random() * 8.0;
+      const targetSpeed = 13.0 + Math.random() * 7.0; // 48 to 72 km/h
       aiTraffic.push({
         group: vGroup,
         type,
@@ -771,34 +774,48 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       });
     }
 
-    // Spawn 20 Active AI Vehicles
-    spawnAIVehicle('car', 'NS', 0.0, 160.0, -1);
-    spawnAIVehicle('bus', 'NS', 0.0, -80.0, -1);
-    spawnAIVehicle('suv', 'NS', 0.0, -160.0, 1);
-    spawnAIVehicle('bike', 'NS', 0.0, 70.0, 1);
+    // Spawn 32 AI Vehicles across the 5x5 city grid
+    // North-South Fleet
+    spawnAIVehicle('car',   'NS', 0.0,    220.0, -1);
+    spawnAIVehicle('bus',   'NS', 0.0,    60.0,  -1);
+    spawnAIVehicle('suv',   'NS', 0.0,    -100.0, 1);
+    spawnAIVehicle('bike',  'NS', 0.0,    -260.0, 1);
 
-    spawnAIVehicle('truck', 'NS', -110.0, 140.0, -1);
-    spawnAIVehicle('car', 'NS', -110.0, -100.0, 1);
-    spawnAIVehicle('suv', 'NS', -110.0, 40.0, 1);
+    spawnAIVehicle('truck', 'NS', -140.0, 180.0, -1);
+    spawnAIVehicle('car',   'NS', -140.0, -40.0, -1);
+    spawnAIVehicle('suv',   'NS', -140.0, -220.0, 1);
 
-    spawnAIVehicle('bus', 'NS', 110.0, 120.0, -1);
-    spawnAIVehicle('car', 'NS', 110.0, -50.0, -1);
-    spawnAIVehicle('bike', 'NS', 110.0, -140.0, 1);
+    spawnAIVehicle('bus',   'NS', 140.0,  260.0, -1);
+    spawnAIVehicle('car',   'NS', 140.0,  50.0,   1);
+    spawnAIVehicle('bike',  'NS', 140.0,  -160.0, 1);
 
-    spawnAIVehicle('car', 'EW', 0.0, -140.0, 1);
-    spawnAIVehicle('truck', 'EW', 0.0, 60.0, 1);
-    spawnAIVehicle('bus', 'EW', 0.0, 140.0, -1);
-    spawnAIVehicle('bike', 'EW', 0.0, -60.0, -1);
+    spawnAIVehicle('car',   'NS', -280.0, 200.0, -1);
+    spawnAIVehicle('truck', 'NS', -280.0, -150.0, 1);
 
-    spawnAIVehicle('suv', 'EW', -130.0, -120.0, 1);
-    spawnAIVehicle('car', 'EW', -130.0, 100.0, -1);
-    spawnAIVehicle('bus', 'EW', -130.0, -30.0, -1);
+    spawnAIVehicle('suv',   'NS', 280.0,  120.0, -1);
+    spawnAIVehicle('bus',   'NS', 280.0,  -80.0,  1);
 
-    spawnAIVehicle('truck', 'EW', 130.0, -150.0, 1);
-    spawnAIVehicle('car', 'EW', 130.0, 30.0, 1);
-    spawnAIVehicle('suv', 'EW', 130.0, 120.0, -1);
+    // East-West Fleet
+    spawnAIVehicle('car',   'EW', 0.0,    -240.0, 1);
+    spawnAIVehicle('truck', 'EW', 0.0,    -80.0,  1);
+    spawnAIVehicle('bus',   'EW', 0.0,    80.0,  -1);
+    spawnAIVehicle('bike',  'EW', 0.0,    240.0, -1);
 
-    // ─── 9. Player Drivable Vehicle with Instant Mesh Swapping ──────────────
+    spawnAIVehicle('suv',   'EW', -140.0, -200.0, 1);
+    spawnAIVehicle('car',   'EW', -140.0, 20.0,   1);
+    spawnAIVehicle('bus',   'EW', -140.0, 180.0, -1);
+
+    spawnAIVehicle('truck', 'EW', 140.0,  -260.0, 1);
+    spawnAIVehicle('car',   'EW', 140.0,  -30.0,  1);
+    spawnAIVehicle('suv',   'EW', 140.0,  160.0, -1);
+
+    spawnAIVehicle('car',   'EW', -280.0, -180.0, 1);
+    spawnAIVehicle('bike',  'EW', -280.0, 140.0, -1);
+
+    spawnAIVehicle('truck', 'EW', 280.0,  -120.0, 1);
+    spawnAIVehicle('car',   'EW', 280.0,  100.0, -1);
+
+    // ─── 9. Player Vehicle with Instant In-Place Swapping ───────────────────
     const playerRoot = new THREE.Group();
     playerRoot.name = 'PlayerVehicleRoot';
     scene.add(playerRoot);
@@ -821,13 +838,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
 
       if (vType === 'bike') {
-        const frameGeo = new THREE.BoxGeometry(0.45, 0.55, 2.1);
-        const frame = new THREE.Mesh(frameGeo, paintMat);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 2.1), paintMat);
         frame.position.y = 0.55;
         playerMeshGroup.add(frame);
 
-        const riderGeo = new THREE.BoxGeometry(0.4, 0.75, 0.5);
-        const rider = new THREE.Mesh(riderGeo, glassMat);
+        const rider = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.75, 0.5), glassMat);
         rider.position.set(0, 1.0, -0.1);
         playerMeshGroup.add(rider);
 
@@ -845,13 +860,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           if (idx === 0) frontWheels.push(wHolder);
         });
       } else if (vType === 'bus') {
-        const bGeo = new THREE.BoxGeometry(2.6, 2.8, 10.5);
-        const b = new THREE.Mesh(bGeo, paintMat);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 10.5), paintMat);
         b.position.y = 1.6;
         playerMeshGroup.add(b);
 
-        const gGeo = new THREE.BoxGeometry(2.65, 0.9, 9.8);
-        const g = new THREE.Mesh(gGeo, glassMat);
+        const g = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.9, 9.8), glassMat);
         g.position.set(0, 2.0, 0);
         playerMeshGroup.add(g);
 
@@ -874,19 +887,16 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         const isTruck = vType === 'truck';
         const isSuv = vType === 'suv';
         const bodyH = isTruck ? 1.4 : isSuv ? 0.8 : 0.65;
-        const bGeo = new THREE.BoxGeometry(isTruck ? 2.3 : 2.05, bodyH, 4.5);
-        const b = new THREE.Mesh(bGeo, paintMat);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(isTruck ? 2.3 : 2.05, bodyH, 4.5), paintMat);
         b.position.y = 0.55;
         playerMeshGroup.add(b);
 
-        const cGeo = new THREE.BoxGeometry(1.7, isSuv ? 0.7 : 0.6, 2.4);
-        const c = new THREE.Mesh(cGeo, glassMat);
+        const c = new THREE.Mesh(new THREE.BoxGeometry(1.7, isSuv ? 0.7 : 0.6, 2.4), glassMat);
         c.position.set(0, 1.15, -0.2);
         playerMeshGroup.add(c);
 
         if (isTruck) {
-          const contGeo = new THREE.BoxGeometry(2.4, 2.5, 5.0);
-          const cont = new THREE.Mesh(contGeo, new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+          const cont = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.5, 5.0), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
           cont.position.set(0, 1.7, -1.8);
           playerMeshGroup.add(cont);
         }
@@ -911,16 +921,14 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       playerRoot.add(playerMeshGroup);
     }
 
-    // Build the initial vehicle mesh matching ref
     buildPlayerMesh(selectedVehicleRef.current);
 
-    // Instant Vehicle Switching handler without scene reloads!
     switchVehicleRef.current = (vType: PlayerVehicleType) => {
       buildPlayerMesh(vType);
     };
 
-    // Starting Position
-    const START_POS = new THREE.Vector3(LANE_OFFSET, 0, 80.0);
+    // Starting Position on Central Grand Boulevard heading North
+    const START_POS = new THREE.Vector3(LANE_OFFSET, 0, 70.0);
     const START_ROT = Math.PI;
     playerRoot.position.copy(START_POS);
     playerRoot.rotation.y = START_ROT;
@@ -939,19 +947,9 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       setJunctionsClearedCount(0);
       setTotalTriggers(0);
       setCrashBanner(null);
-      junctions.forEach((j) => {
-        j.currentPhase = 'NS_GREEN';
-        j.cleared = false;
-        j.tcuTimer = 8.0;
-        j.signals.forEach((sig) => {
-          const isNS = sig.axis === 'NS';
-          (sig.red.material as THREE.MeshStandardMaterial).emissiveIntensity = isNS ? 0.2 : 4.5;
-          (sig.green.material as THREE.MeshStandardMaterial).emissiveIntensity = isNS ? 4.5 : 0.2;
-        });
-      });
     };
 
-    // ─── 10. Simulation Loop with Real Collisions, Physics, & Camera ─────────
+    // ─── 10. Simulation Loop with Accurate Signals & Anti-Crash AI ───────────
     let carSpeed = 0;
     let steeringAngle = 0;
     let lastTime = performance.now();
@@ -961,11 +959,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     let bannerTimeout: ReturnType<typeof setTimeout> | null = null;
     const triggerCrash = (collidedWith: string) => {
       setCrashBanner(`💥 CRASH IMPACT! Collided with ${collidedWith}`);
-      crashShakeTimer = 0.25; // 250ms of camera impact vibration
+      crashShakeTimer = 0.22;
       if (bannerTimeout) clearTimeout(bannerTimeout);
       bannerTimeout = setTimeout(() => {
         setCrashBanner(null);
-      }, 2400);
+      }, 2200);
     };
 
     const animate = (currentTime: number) => {
@@ -1044,13 +1042,13 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerRoot.rotation.y);
       playerRoot.position.addScaledVector(forward, carSpeed * dt);
 
-      // Check if player completed 90° cross-turn mission
+      // Check cross turn mission
       const headingAngle = Math.abs(playerRoot.rotation.y % Math.PI);
       if (Math.abs(headingAngle - Math.PI / 2) < 0.3) {
         setMissions((prev) => prev.map((m) => (m.id === 'cross_turn' ? { ...m, completed: true } : m)));
       }
 
-      // ─── SOLID BUILDING COLLISION PHYSICS ──────────────────────────────────
+      // ─── SOLID BUILDING COLLIDERS ──────────────────────────────────────────
       const carRadius = currentType === 'bus' ? 2.2 : currentType === 'truck' ? 1.9 : 1.35;
       for (const b of buildingColliders) {
         if (
@@ -1059,7 +1057,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           playerRoot.position.z + carRadius > b.minZ &&
           playerRoot.position.z - carRadius < b.maxZ
         ) {
-          // Calculate penetration depth along all 4 cardinal faces
           const penLeft = playerRoot.position.x + carRadius - b.minX;
           const penRight = b.maxX - (playerRoot.position.x - carRadius);
           const penBottom = playerRoot.position.z + carRadius - b.minZ;
@@ -1071,7 +1068,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           else if (minPen === penBottom) playerRoot.position.z = b.minZ - carRadius;
           else if (minPen === penTop) playerRoot.position.z = b.maxZ + carRadius;
 
-          // Crash rebound
           if (Math.abs(carSpeed) > 2.0) {
             triggerCrash('Building Wall');
           }
@@ -1080,7 +1076,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         }
       }
 
-      // ─── VEHICLE-TO-VEHICLE CRASH & IMPACT PHYSICS ────────────────────────
+      // ─── VEHICLE-TO-VEHICLE CRASH PHYSICS (PLAYER <-> AI) ──────────────────
       const playerLength = currentType === 'bus' ? 5.2 : currentType === 'truck' ? 4.2 : 2.5;
 
       aiTraffic.forEach((ai) => {
@@ -1095,7 +1091,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           const normal = diff.normalize();
           const overlap = impactDist - dist;
 
-          // Momentum-based push apart
           const totalWeight = profile.weightTons + ai.profile.weightTons;
           const playerRatio = ai.profile.weightTons / totalWeight;
           const aiRatio = profile.weightTons / totalWeight;
@@ -1107,20 +1102,19 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             triggerCrash(`${ai.profile.icon} ${ai.profile.name}`);
           }
 
-          // Elastic bounce
           carSpeed = -carSpeed * 0.45;
           ai.speed = Math.max(ai.speed * 0.3, 4.0);
         }
       });
 
-      // City Boundaries Wrap-Around
+      // City Boundaries Wrap-Around (400m bounds)
       const HALF_SPAN_X = CITY_SPAN_X / 2;
       const HALF_SPAN_Z = CITY_SPAN_Z / 2;
-      if (playerRoot.position.x > HALF_SPAN_X) playerRoot.position.x = -HALF_SPAN_X + 10;
-      else if (playerRoot.position.x < -HALF_SPAN_X) playerRoot.position.x = HALF_SPAN_X - 10;
+      if (playerRoot.position.x > HALF_SPAN_X) playerRoot.position.x = -HALF_SPAN_X + 15;
+      else if (playerRoot.position.x < -HALF_SPAN_X) playerRoot.position.x = HALF_SPAN_X - 15;
 
-      if (playerRoot.position.z > HALF_SPAN_Z) playerRoot.position.z = -HALF_SPAN_Z + 10;
-      else if (playerRoot.position.z < -HALF_SPAN_Z) playerRoot.position.z = HALF_SPAN_Z - 10;
+      if (playerRoot.position.z > HALF_SPAN_Z) playerRoot.position.z = -HALF_SPAN_Z + 15;
+      else if (playerRoot.position.z < -HALF_SPAN_Z) playerRoot.position.z = HALF_SPAN_Z - 15;
 
       playerTires.forEach((t) => {
         t.rotation.x += (carSpeed / 0.36) * dt;
@@ -1129,43 +1123,127 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       const kmh = Math.abs(Math.round(carSpeed * 3.6));
       setSpeedKmh(kmh);
 
-      // ─── 11. TCU 4-Way Traffic Signal Control ──────────────────────────────
+      // ─── 11. TCU 4-PHASE REALISTIC TRAFFIC SIGNAL CONTROLLER ────────────────
+      // Phases: NS_GREEN (7.0s) -> NS_YELLOW (2.5s) -> EW_GREEN (7.0s) -> EW_YELLOW (2.5s)
       junctions.forEach((j) => {
         j.tcuTimer -= dt;
         if (j.tcuTimer <= 0) {
-          j.currentPhase = j.currentPhase === 'NS_GREEN' ? 'EW_GREEN' : 'NS_GREEN';
-          j.tcuTimer = 8.0;
+          if (j.currentPhase === 'NS_GREEN') {
+            j.currentPhase = 'NS_YELLOW';
+            j.tcuTimer = 2.5;
+          } else if (j.currentPhase === 'NS_YELLOW') {
+            j.currentPhase = 'EW_GREEN';
+            j.tcuTimer = 7.0;
+          } else if (j.currentPhase === 'EW_GREEN') {
+            j.currentPhase = 'EW_YELLOW';
+            j.tcuTimer = 2.5;
+          } else {
+            j.currentPhase = 'NS_GREEN';
+            j.tcuTimer = 7.0;
+          }
 
+          // Update all 4 signal heads precisely
           j.signals.forEach((sig) => {
-            const isGreen = (sig.axis === 'NS' && j.currentPhase === 'NS_GREEN') || (sig.axis === 'EW' && j.currentPhase === 'EW_GREEN');
-            (sig.red.material as THREE.MeshStandardMaterial).emissiveIntensity = isGreen ? 0.2 : 4.5;
-            (sig.green.material as THREE.MeshStandardMaterial).emissiveIntensity = isGreen ? 4.5 : 0.2;
+            const isNS = sig.axis === 'NS';
+            if (isNS) {
+              const isG = j.currentPhase === 'NS_GREEN';
+              const isY = j.currentPhase === 'NS_YELLOW';
+              const isR = j.currentPhase === 'EW_GREEN' || j.currentPhase === 'EW_YELLOW';
+
+              (sig.green.material as THREE.MeshStandardMaterial).emissiveIntensity = isG ? 4.5 : 0.1;
+              (sig.yellow.material as THREE.MeshStandardMaterial).emissiveIntensity = isY ? 4.5 : 0.1;
+              (sig.red.material as THREE.MeshStandardMaterial).emissiveIntensity = isR ? 4.5 : 0.1;
+            } else {
+              const isG = j.currentPhase === 'EW_GREEN';
+              const isY = j.currentPhase === 'EW_YELLOW';
+              const isR = j.currentPhase === 'NS_GREEN' || j.currentPhase === 'NS_YELLOW';
+
+              (sig.green.material as THREE.MeshStandardMaterial).emissiveIntensity = isG ? 4.5 : 0.1;
+              (sig.yellow.material as THREE.MeshStandardMaterial).emissiveIntensity = isY ? 4.5 : 0.1;
+              (sig.red.material as THREE.MeshStandardMaterial).emissiveIntensity = isR ? 4.5 : 0.1;
+            }
           });
         }
       });
 
-      // ─── 12. Active Dynamic AI Traffic across Both Axes ────────────────────
+      // ─── 12. ANTI-CRASH DYNAMIC AI TRAFFIC NAVIGATION ──────────────────────
       aiTraffic.forEach((ai) => {
         let shouldStop = false;
 
-        junctions.forEach((j) => {
+        // A) SAFE FOLLOWING DISTANCE: Check for vehicle ahead in the same lane
+        let distToLead = 999.0;
+
+        // Check distance to player
+        const toPlayer = playerRoot.position.clone().sub(ai.group.position);
+        if (ai.axis === 'NS') {
+          if (Math.abs(toPlayer.x) < 3.0) {
+            const forwardDist = toPlayer.z * ai.direction;
+            if (forwardDist > 0 && forwardDist < 25.0) {
+              distToLead = Math.min(distToLead, forwardDist);
+            }
+          }
+        } else {
+          if (Math.abs(toPlayer.z) < 3.0) {
+            const forwardDist = toPlayer.x * ai.direction;
+            if (forwardDist > 0 && forwardDist < 25.0) {
+              distToLead = Math.min(distToLead, forwardDist);
+            }
+          }
+        }
+
+        // Check distance to other AI vehicles in the same lane
+        aiTraffic.forEach((other) => {
+          if (other === ai || other.axis !== ai.axis || other.direction !== ai.direction) return;
           if (ai.axis === 'NS') {
-            if (Math.abs(ai.group.position.x - j.x) < 5.0) {
-              const distZ = ai.direction === 1 ? j.z - ai.group.position.z : ai.group.position.z - j.z;
-              if (distZ > 0 && distZ < 22.0 && j.currentPhase !== 'NS_GREEN') {
-                shouldStop = true;
+            if (Math.abs(other.group.position.x - ai.group.position.x) < 2.5) {
+              const forwardDist = (other.group.position.z - ai.group.position.z) * ai.direction;
+              if (forwardDist > 0 && forwardDist < 25.0) {
+                distToLead = Math.min(distToLead, forwardDist);
               }
             }
           } else {
-            if (Math.abs(ai.group.position.z - j.z) < 5.0) {
-              const distX = ai.direction === 1 ? j.x - ai.group.position.x : ai.group.position.x - j.x;
-              if (distX > 0 && distX < 22.0 && j.currentPhase !== 'EW_GREEN') {
-                shouldStop = true;
+            if (Math.abs(other.group.position.z - ai.group.position.z) < 2.5) {
+              const forwardDist = (other.group.position.x - ai.group.position.x) * ai.direction;
+              if (forwardDist > 0 && forwardDist < 25.0) {
+                distToLead = Math.min(distToLead, forwardDist);
               }
             }
           }
         });
 
+        if (distToLead < 9.0) {
+          shouldStop = true; // Maintain safe following distance!
+        }
+
+        // B) TRAFFIC LIGHT COMPLIANCE: Check upcoming 4-way intersection signals
+        if (!shouldStop) {
+          junctions.forEach((j) => {
+            if (ai.axis === 'NS') {
+              if (Math.abs(ai.group.position.x - j.x) < 5.0) {
+                const distToLine = (j.z - ai.group.position.z) * ai.direction;
+                // Approaching within 25m of stop bar
+                if (distToLine > 6.0 && distToLine < 24.0) {
+                  const isGreen = j.currentPhase === 'NS_GREEN';
+                  if (!isGreen) {
+                    shouldStop = true; // Stop cleanly before zebra crossing!
+                  }
+                }
+              }
+            } else {
+              if (Math.abs(ai.group.position.z - j.z) < 5.0) {
+                const distToLine = (j.x - ai.group.position.x) * ai.direction;
+                if (distToLine > 6.0 && distToLine < 24.0) {
+                  const isGreen = j.currentPhase === 'EW_GREEN';
+                  if (!isGreen) {
+                    shouldStop = true;
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        // C) MOVEMENT & WHEEL ANIMATION
         if (!shouldStop) {
           const move = ai.speed * dt * ai.direction;
           if (ai.axis === 'NS') {
@@ -1179,15 +1257,16 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           });
         }
 
+        // Wrap around at city perimeter
         if (ai.axis === 'NS') {
-          if (ai.group.position.z > HALF_SPAN_Z) ai.group.position.z = -HALF_SPAN_Z + 5;
-          else if (ai.group.position.z < -HALF_SPAN_Z) ai.group.position.z = HALF_SPAN_Z - 5;
+          if (ai.group.position.z > HALF_SPAN_Z) ai.group.position.z = -HALF_SPAN_Z + 10;
+          else if (ai.group.position.z < -HALF_SPAN_Z) ai.group.position.z = HALF_SPAN_Z - 10;
         } else {
-          if (ai.group.position.x > HALF_SPAN_X) ai.group.position.x = -HALF_SPAN_X + 5;
-          else if (ai.group.position.x < -HALF_SPAN_X) ai.group.position.x = HALF_SPAN_X - 5;
+          if (ai.group.position.x > HALF_SPAN_X) ai.group.position.x = -HALF_SPAN_X + 10;
+          else if (ai.group.position.x < -HALF_SPAN_X) ai.group.position.x = HALF_SPAN_X - 10;
         }
 
-        // AI Vehicle Piezoresistive Sensor Detection
+        // D) PIEZORESISTIVE SENSOR ACTIVATION BY AI VEHICLES
         junctions.forEach((j) => {
           j.sensorPlates.forEach((sp) => {
             if (ai.group.position.distanceTo(sp.center) < 3.5) {
@@ -1198,26 +1277,23 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
               sp.pulseMat.opacity = Math.max(0.95 - sp.pulseScale * 0.25, 0.0);
               sp.lastDetectedVehicleName = `${ai.profile.icon} ${ai.profile.name}`;
 
-              const needsFlip = (sp.axis === 'NS' && j.currentPhase !== 'NS_GREEN') || (sp.axis === 'EW' && j.currentPhase !== 'EW_GREEN');
-              if (needsFlip) {
-                j.currentPhase = sp.axis === 'NS' ? 'NS_GREEN' : 'EW_GREEN';
-                j.tcuTimer = 7.0;
-                j.signals.forEach((sig) => {
-                  const isGreen = (sig.axis === 'NS' && j.currentPhase === 'NS_GREEN') || (sig.axis === 'EW' && j.currentPhase === 'EW_GREEN');
-                  (sig.red.material as THREE.MeshStandardMaterial).emissiveIntensity = isGreen ? 0.2 : 4.5;
-                  (sig.green.material as THREE.MeshStandardMaterial).emissiveIntensity = isGreen ? 4.5 : 0.2;
-                });
+              // Adaptive signal preemption (safely transitions through yellow phase)
+              const isRedForAxis = (sp.axis === 'NS' && (j.currentPhase === 'EW_GREEN' || j.currentPhase === 'EW_YELLOW')) ||
+                                   (sp.axis === 'EW' && (j.currentPhase === 'NS_GREEN' || j.currentPhase === 'NS_YELLOW'));
+              if (isRedForAxis && j.tcuTimer > 2.0) {
+                // Shorten current phase so it clears to yellow quickly
+                j.tcuTimer = 1.0;
               }
             }
           });
         });
       });
 
-      // ─── 13. Player Piezoresistive Telemetry Engine ────────────────────────
+      // ─── 13. PLAYER PIEZORESISTIVE TELEMETRY & ADAPTIVE PREEMPTION ─────────
       const playerPos = playerRoot.position;
       let detectedP = 0;
       let detectedDR = 0;
-      let currentZone = 'Central City Arterial';
+      let currentZone = 'Central Grand Boulevard';
       let activeDetectedName = 'None (Scanning)';
       let activeClass = 'STANDBY';
       let activeW = 0;
@@ -1232,7 +1308,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       }
 
       junctions.forEach((j) => {
-        if (!j.cleared && playerPos.distanceTo(new THREE.Vector3(j.x, 0, j.z)) < 10.0) {
+        if (!j.cleared && playerPos.distanceTo(new THREE.Vector3(j.x, 0, j.z)) < 12.0) {
           j.cleared = true;
           setJunctionsClearedCount((c) => {
             const next = c + 1;
@@ -1269,15 +1345,18 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
               setMissions((prev) => prev.map((m) => (m.id === 'detect_bus' ? { ...m, completed: true } : m)));
             }
 
-            const needsFlip = (sp.axis === 'NS' && j.currentPhase !== 'NS_GREEN') || (sp.axis === 'EW' && j.currentPhase !== 'EW_GREEN');
-            if (needsFlip) {
-              j.currentPhase = sp.axis === 'NS' ? 'NS_GREEN' : 'EW_GREEN';
-              j.tcuTimer = 9.0;
-              j.signals.forEach((sig) => {
-                const isGreen = (sig.axis === 'NS' && j.currentPhase === 'NS_GREEN') || (sig.axis === 'EW' && j.currentPhase === 'EW_GREEN');
-                (sig.red.material as THREE.MeshStandardMaterial).emissiveIntensity = isGreen ? 0.2 : 4.5;
-                (sig.green.material as THREE.MeshStandardMaterial).emissiveIntensity = isGreen ? 4.5 : 0.2;
-              });
+            // Adaptive preemption for player: trigger green clearance!
+            const isRedForAxis = (sp.axis === 'NS' && (j.currentPhase === 'EW_GREEN' || j.currentPhase === 'EW_YELLOW')) ||
+                                 (sp.axis === 'EW' && (j.currentPhase === 'NS_GREEN' || j.currentPhase === 'NS_YELLOW'));
+            if (isRedForAxis) {
+              // Accelerate cycle to yield green for player's approach
+              if (j.currentPhase === 'EW_GREEN') {
+                j.currentPhase = 'EW_YELLOW';
+                j.tcuTimer = 1.8;
+              } else if (j.currentPhase === 'NS_GREEN') {
+                j.currentPhase = 'NS_YELLOW';
+                j.tcuTimer = 1.8;
+              }
               setTotalTriggers((c) => c + 1);
             }
           }
@@ -1293,7 +1372,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         setDetectedWeight(activeW);
       }
 
-      // Camera Follow with Crash Screen Shake
+      // Camera Follow
       const activeCamMode = cameraModeRef.current;
       if (activeCamMode === 'chase') {
         const offsetDist = currentType === 'bus' ? -12.5 : -7.8;
@@ -1303,8 +1382,8 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
         if (crashShakeTimer > 0) {
           crashShakeTimer -= dt;
-          desiredCamPos.x += (Math.random() - 0.5) * 0.8;
-          desiredCamPos.y += (Math.random() - 0.5) * 0.8;
+          desiredCamPos.x += (Math.random() - 0.5) * 0.7;
+          desiredCamPos.y += (Math.random() - 0.5) * 0.7;
         }
 
         camera.position.lerp(desiredCamPos, 0.16);
@@ -1320,13 +1399,13 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         const lookTarget = playerRoot.position.clone().add(new THREE.Vector3(0, 1.1, 14.0).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerRoot.rotation.y));
         camera.lookAt(lookTarget);
       } else if (activeCamMode === 'top') {
-        camera.position.set(playerRoot.position.x, 56.0, playerRoot.position.z - 0.1);
+        camera.position.set(playerRoot.position.x, 65.0, playerRoot.position.z - 0.1);
         camera.lookAt(playerRoot.position);
       }
 
       renderer.render(scene, camera);
 
-      // ─── 14. Draw Crisp Light-Theme GPS Minimap Radar ──────────────────────
+      // ─── 14. GPS Minimap Radar (Enlarged 5x5 Grid) ─────────────────────────
       const mapCanvas = minimapCanvasRef.current;
       if (mapCanvas) {
         const ctx = mapCanvas.getContext('2d');
@@ -1335,7 +1414,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           const h = mapCanvas.height;
           ctx.clearRect(0, 0, w, h);
 
-          // Clean Light Theme Canvas Background
           ctx.fillStyle = '#f8fafc';
           ctx.fillRect(0, 0, w, h);
 
@@ -1343,7 +1421,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           const toX = (wx: number) => (wx + CITY_SPAN_X / 2) * scale;
           const toY = (wz: number) => (wz + CITY_SPAN_Z / 2) * scale;
 
-          // Roads (Clean Slate Asphalt)
+          // Roads
           ctx.fillStyle = '#cbd5e1';
           NS_AVENUES.forEach((av) => {
             ctx.fillRect(toX(av.x - HALF_W), 0, ROAD_W * scale, h);
@@ -1352,25 +1430,27 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             ctx.fillRect(0, toY(st.z - HALF_W), w, ROAD_W * scale);
           });
 
-          // 4-Way Intersections & Signal Phase (Green / Red)
+          // 25 Intersections with 4-Phase Colors (Green / Amber / Red)
           junctions.forEach((j) => {
             const jx = toX(j.x);
             const jy = toY(j.z);
-            ctx.fillStyle = j.currentPhase === 'NS_GREEN' ? '#16a34a' : '#dc2626';
+            const isGreen = j.currentPhase === 'NS_GREEN';
+            const isYellow = j.currentPhase === 'NS_YELLOW' || j.currentPhase === 'EW_YELLOW';
+            ctx.fillStyle = isGreen ? '#16a34a' : isYellow ? '#f59e0b' : '#dc2626';
             ctx.beginPath();
-            ctx.arc(jx, jy, 4, 0, Math.PI * 2);
+            ctx.arc(jx, jy, 3.2, 0, Math.PI * 2);
             ctx.fill();
           });
 
-          // AI Traffic Dots (Vibrant Amber)
+          // AI Traffic Dots
           ctx.fillStyle = '#d97706';
           aiTraffic.forEach((ai) => {
             const ax = toX(ai.group.position.x);
             const ay = toY(ai.group.position.z);
-            ctx.fillRect(ax - 2, ay - 2, 4, 4);
+            ctx.fillRect(ax - 1.5, ay - 1.5, 3, 3);
           });
 
-          // Player Car Marker (Bold Cyan / Cobalt) with Heading Arrow
+          // Player Car Marker with Heading Arrow
           const px = toX(playerRoot.position.x);
           const py = toY(playerRoot.position.z);
           ctx.save();
@@ -1378,9 +1458,9 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           ctx.rotate(-playerRoot.rotation.y + Math.PI);
           ctx.fillStyle = '#0284c7';
           ctx.beginPath();
-          ctx.moveTo(0, -7);
-          ctx.lineTo(5, 5);
-          ctx.lineTo(-5, 5);
+          ctx.moveTo(0, -6);
+          ctx.lineTo(4, 4);
+          ctx.lineTo(-4, 4);
           ctx.closePath();
           ctx.fill();
           ctx.restore();
@@ -1404,7 +1484,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
     };
-  }, []); // Run ONCE on mount! Vehicle & camera mode updates happen live via refs!
+  }, []);
 
   return (
     <div className="simulation-game-root simulation-theme-light" ref={mountRef}>
@@ -1423,7 +1503,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           </button>
           <div className="hud-badge-tag">
             <span className="hud-live-dot" />
-            <span className="hud-title-text">MINI CITY 4-WAY CROSS</span>
+            <span className="hud-title-text">METROPOLITAN MINI CITY (5x5 GRID)</span>
           </div>
         </div>
 
@@ -1449,7 +1529,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         {/* Right: Grid Stats, Camera, & Reset */}
         <div className="hud-group-right">
           <div className="hud-metric-pill">
-            <span className="pill-val">{junctionsClearedCount}/9</span>
+            <span className="pill-val">{junctionsClearedCount}/25</span>
             <span className="pill-sub">CLEARED</span>
           </div>
           <div className="hud-metric-pill hud-metric-pill--next">
