@@ -350,13 +350,13 @@ export class SceneManager {
 
     if (plan === 'four_lane') {
       this.buildFourLaneDemoSubtree();
-      this.camCtrl.flyTo(new THREE.Vector3(0, 80, 60), new THREE.Vector3(0, 0, 0), 1.5);
+      this.camCtrl.flyTo(new THREE.Vector3(26, 16, -32), new THREE.Vector3(0, 1.2, 0), 1.6);
     } else if (plan === 'flyover') {
       this.buildFlyoverDemoSubtree();
-      this.camCtrl.flyTo(new THREE.Vector3(36, 32, -60), new THREE.Vector3(0, 5, 0), 1.6);
+      this.camCtrl.flyTo(new THREE.Vector3(32, 16, -26), new THREE.Vector3(0, 6.2, 0), 1.6);
     } else if (plan === 'ring_road') {
       this.buildRingRoadDemoSubtree();
-      this.camCtrl.flyTo(new THREE.Vector3(0, 130, 90), new THREE.Vector3(0, 0, -20), 1.6);
+      this.camCtrl.flyTo(new THREE.Vector3(42, 28, 48), new THREE.Vector3(12, 0, -6), 1.6);
     } else if (plan === 'road_sensor') {
       const junction = this.buildRoadSensorDemoSubtree();
       this.autoCam = false;
@@ -392,7 +392,13 @@ export class SceneManager {
       this.realLocationMgr.setVisible(false);
       this.analysisVis.setVisible(false);
       this.proposedMgr.setViewState('existing');
-      this.camCtrl.flyTo(new THREE.Vector3(0, 80, 60), new THREE.Vector3(0, 0, 0), 1.8);
+      if (this.currentPlanType === 'flyover') {
+        this.camCtrl.flyTo(new THREE.Vector3(32, 16, -26), new THREE.Vector3(0, 6.2, 0), 1.8);
+      } else if (this.currentPlanType === 'ring_road') {
+        this.camCtrl.flyTo(new THREE.Vector3(42, 28, 48), new THREE.Vector3(12, 0, -6), 1.8);
+      } else {
+        this.camCtrl.flyTo(new THREE.Vector3(26, 16, -32), new THREE.Vector3(0, 1.2, 0), 1.8);
+      }
     } else {
       this.demoGroup.visible = false;
       this.realLocationMgr.setVisible(true);
@@ -692,24 +698,30 @@ export class SceneManager {
 
   private applyFlyoverTimeline(elem: FlyoverSceneElements, p: number) {
     elem.surfaceRoads.visible = true;
-    elem.piersGroup.visible = p >= 0.28;
-    elem.approachRampSouth.visible = p >= 0.48;
-    elem.approachRampNorth.visible = p >= 0.48;
-    elem.elevatedDeck.visible = p >= 0.52;
-    elem.barriersGroup.visible = p >= 0.72;
-    elem.medianGroup.visible = p >= 0.78;
-    elem.markingsGroup.visible = p >= 0.84;
-    elem.elevatedLights.visible = p >= 0.90;
+    elem.piersGroup.visible = p >= 0.18;
+    elem.approachRampSouth.visible = p >= 0.38;
+    elem.approachRampNorth.visible = p >= 0.38;
+    elem.elevatedDeck.visible = p >= 0.45;
+    elem.barriersGroup.visible = p >= 0.65;
+    elem.medianGroup.visible = p >= 0.65;
+    elem.markingsGroup.visible = p >= 0.75;
+    elem.elevatedLights.visible = p >= 0.85;
+    if (elem.overheadGantry) {
+      elem.overheadGantry.visible = p >= 0.85;
+    }
   }
 
   private applyRingRoadTimeline(elem: RingRoadSceneElements, p: number) {
     elem.buildings.visible = true;
     elem.radialRoads.visible = true;
-    elem.roundabouts.visible = p >= 0.35;
-    elem.orbitalRingPavement.visible = p >= 0.55;
-    elem.orbitalMedian.visible = p >= 0.75;
-    elem.orbitalBarriers.visible = p >= 0.80;
-    elem.lights.visible = p >= 0.88;
+    elem.roundabouts.visible = p >= 0.18;
+    elem.orbitalRingPavement.visible = p >= 0.38;
+    elem.orbitalMedian.visible = p >= 0.58;
+    elem.orbitalBarriers.visible = p >= 0.68;
+    elem.lights.visible = p >= 0.80;
+    if (elem.overheadGantry) {
+      elem.overheadGantry.visible = p >= 0.80;
+    }
   }
 
   private updateFlyoverVehicles(delta: number) {

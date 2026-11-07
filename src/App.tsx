@@ -112,6 +112,7 @@ export default function App() {
     } else if (selectedMode === 'build') {
       setMode('demo');
       setDemoPlan(prev => (prev === 'road_sensor' ? 'four_lane' : prev));
+      setProgress(1.0);
       setIsRoadSensorOpen(false);
     } else if (selectedMode === 'route') {
       setMode('real_location');
@@ -1135,7 +1136,7 @@ export default function App() {
             currentPlan={demoPlan}
             onSelectPlan={(plan) => {
               handleSelectDemoPlan(plan);
-              handleReset();
+              setProgress(1.0);
             }}
             onOpenSpecs={() => setShowSpecsModal(true)}
             isDemoMode={true}
@@ -1310,7 +1311,7 @@ export default function App() {
             currentPlan={demoPlan}
             onSelectPlan={(plan) => {
               handleSelectDemoPlan(plan);
-              handleReset();
+              setProgress(1.0);
             }}
             onClose={() => setShowSpecsModal(false)}
           />
@@ -1346,10 +1347,10 @@ export default function App() {
             </h2>
             <p className="hero-completion-card__subtitle">
               {demoPlan === 'flyover'
-                ? 'Dual-Level Grade Separation Complete (2026 — 2030)'
+                ? 'Dual-Level Grade Separation Complete • Phase 5 Commissioned'
                 : demoPlan === 'ring_road'
-                ? 'Peripheral Bypass Logistics Beltway Active (2026 — 2030)'
-                : 'Corridor Modernization Fulfilled (2026 — 2030)'}
+                ? 'Peripheral Bypass Logistics Beltway Active • Phase 5 Commissioned'
+                : 'Divided 4-Lane Arterial Complete • Phase 5 Commissioned'}
             </p>
             <button
 
