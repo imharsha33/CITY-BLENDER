@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type MainNavigationMode = 'home' | 'flow' | 'build' | 'route';
+export type MainNavigationMode = 'home' | 'flow' | 'build' | 'route' | 'simulation';
 
 interface HeaderProps {
   activeMode: MainNavigationMode;
@@ -75,6 +75,15 @@ export const Header: React.FC<HeaderProps> = ({
           title="Route"
         >
           Route
+        </button>
+
+        <button
+          id="btn-nav-simulation"
+          className={`nav-single-btn ${activeMode === 'simulation' ? 'nav-single-btn--active' : ''}`}
+          onClick={() => onSelectMode('simulation')}
+          title="Interactive Vehicle Sensing Simulation Game"
+        >
+          Simulation
         </button>
       </nav>
 

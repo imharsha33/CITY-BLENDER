@@ -13,77 +13,77 @@ interface RoadHierarchyStyle {
   markingDashed: boolean;
 }
 
-// Google Maps Iconic Road Hierarchy Colors
+// High-contrast civil engineering asphalt hierarchy
 const HIERARCHY_STYLES: Record<string, RoadHierarchyStyle> = {
   motorway: {
     width: 14.0,
-    asphaltColor: 0xf59e0b, // Google Maps amber-orange national highway
-    centerlineColor: 0xffffff,
-    layerElevation: 0.08,
+    asphaltColor: 0x1e293b, // Deep asphalt
+    centerlineColor: 0xf59e0b, // Amber expressway markings
+    layerElevation: 0.28,
     hasMarkings: true,
     markingDashed: true,
   },
   trunk: {
     width: 12.0,
-    asphaltColor: 0xf97316, // Google Maps warm orange trunk arterial
-    centerlineColor: 0xffffff,
-    layerElevation: 0.07,
+    asphaltColor: 0x27303f,
+    centerlineColor: 0xf97316,
+    layerElevation: 0.24,
     hasMarkings: true,
     markingDashed: true,
   },
   primary: {
     width: 10.0,
-    asphaltColor: 0xfde047, // Google Maps sunny yellow primary corridor
-    centerlineColor: 0xffffff,
-    layerElevation: 0.06,
+    asphaltColor: 0x2d3748,
+    centerlineColor: 0xfacc15, // Golden yellow arterial centerline
+    layerElevation: 0.20,
     hasMarkings: true,
     markingDashed: true,
   },
   secondary: {
     width: 8.0,
-    asphaltColor: 0xffffff, // Google Maps clean white secondary with border
-    centerlineColor: 0xe2e8f0,
-    layerElevation: 0.05,
+    asphaltColor: 0x334155, // Clean slate asphalt
+    centerlineColor: 0xffffff,
+    layerElevation: 0.16,
     hasMarkings: true,
     markingDashed: false,
   },
   tertiary: {
     width: 6.5,
-    asphaltColor: 0xffffff,
+    asphaltColor: 0x3e4c5e,
     centerlineColor: 0xe2e8f0,
-    layerElevation: 0.04,
-    hasMarkings: false,
+    layerElevation: 0.14,
+    hasMarkings: true,
     markingDashed: false,
   },
   residential: {
     width: 5.5,
-    asphaltColor: 0xffffff,
-    centerlineColor: 0xedf2f7,
-    layerElevation: 0.03,
+    asphaltColor: 0x475569, // Slate gray asphalt
+    centerlineColor: 0xcfd8dc,
+    layerElevation: 0.12,
     hasMarkings: false,
     markingDashed: false,
   },
   service: {
-    width: 4.0,
-    asphaltColor: 0xf8fafc,
-    centerlineColor: 0xe2e8f0,
-    layerElevation: 0.02,
+    width: 4.2,
+    asphaltColor: 0x546375,
+    centerlineColor: 0x94a3b8,
+    layerElevation: 0.10,
     hasMarkings: false,
     markingDashed: false,
   },
   unclassified: {
     width: 5.5,
-    asphaltColor: 0xffffff,
-    centerlineColor: 0xe2e8f0,
-    layerElevation: 0.03,
+    asphaltColor: 0x475569,
+    centerlineColor: 0xcfd8dc,
+    layerElevation: 0.12,
     hasMarkings: false,
     markingDashed: false,
   },
   default: {
     width: 5.5,
-    asphaltColor: 0xffffff,
-    centerlineColor: 0xe2e8f0,
-    layerElevation: 0.03,
+    asphaltColor: 0x475569,
+    centerlineColor: 0xcfd8dc,
+    layerElevation: 0.12,
     hasMarkings: false,
     markingDashed: false,
   },
@@ -331,7 +331,7 @@ export class RoadNetworkManager {
     junctionPoints.forEach(({ pos, maxHalfWidth }) => {
       const discGeo = new THREE.CircleGeometry(maxHalfWidth * 1.05, 12);
       discGeo.rotateX(-Math.PI / 2);
-      const discMat = this.getAsphaltMaterial(0xffffff);
+      const discMat = this.getAsphaltMaterial(0x334155);
       const disc = new THREE.Mesh(discGeo, discMat);
       disc.position.set(pos.x, pos.y - 0.005, pos.z);
       this.junctionsGroup.add(disc);

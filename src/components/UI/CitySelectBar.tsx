@@ -8,7 +8,18 @@ interface CitySelectBarProps {
   isLoading?: boolean;
 }
 
-const PRESET_CITIES: { name: string; region: string; loc: LocationResult }[] = [
+export const PRESET_CITIES: { name: string; region: string; loc: LocationResult }[] = [
+  {
+    name: 'Vijayawada',
+    region: 'Andhra Pradesh, India',
+    loc: {
+      id: 'vijayawada-ap',
+      displayName: 'Vijayawada, Andhra Pradesh, India',
+      name: 'Vijayawada',
+      latitude: 16.5062,
+      longitude: 80.6480,
+    },
+  },
   {
     name: 'Madurai',
     region: 'Tamil Nadu, India',
@@ -18,17 +29,6 @@ const PRESET_CITIES: { name: string; region: string; loc: LocationResult }[] = [
       name: 'Madurai',
       latitude: 9.9261,
       longitude: 78.1141,
-    },
-  },
-  {
-    name: 'Siddipet',
-    region: 'Telangana, India',
-    loc: {
-      id: 'siddipet-telangana',
-      displayName: 'Siddipet, Telangana, India',
-      name: 'Siddipet',
-      latitude: 18.1018,
-      longitude: 78.8520,
     },
   },
   {
@@ -42,21 +42,10 @@ const PRESET_CITIES: { name: string; region: string; loc: LocationResult }[] = [
       longitude: 79.9865,
     },
   },
-  {
-    name: 'Varkala',
-    region: 'Kerala, India',
-    loc: {
-      id: 'varkala-kerala',
-      displayName: 'Varkala, Kerala, India',
-      name: 'Varkala',
-      latitude: 8.7379,
-      longitude: 76.7163,
-    },
-  },
 ];
 
 export const CitySelectBar: React.FC<CitySelectBarProps> = ({
-  locationName = 'Madurai',
+  locationName = 'Nellore',
   onSelectLocation,
   onSelectDemoPlan,
   isLoading = false,

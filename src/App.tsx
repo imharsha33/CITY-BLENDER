@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Header, type MainNavigationMode } from './components/UI/Header';
 import { RouteToolbar } from './components/UI/RouteToolbar';
+import { PRESET_CITIES } from './components/UI/CitySelectBar';
 import { FrontPage } from './components/UI/FrontPage';
 import { RoadScene, type FocusTarget } from './components/Scene/RoadScene';
 import { Timeline } from './components/Timeline/Timeline';
@@ -48,6 +49,7 @@ import type { SignalJunctionTelemetry } from './components/Scene/SmartSignalJunc
 import type { DemoPlanType } from './data/planScenarios';
 import { SCENARIOS } from './data/planScenarios';
 import { ProjectInfoSection } from './components/UI/ProjectInfoSection';
+import { VehicleSimulationView } from './components/Simulation/VehicleSimulationView';
 import './styles/global.css';
 
 const NORMAL_SPEED = 0.00035; // ~48s full run
@@ -99,6 +101,8 @@ export default function App() {
   const handleSelectNavMode = useCallback((selectedMode: MainNavigationMode) => {
     setMainNavMode(selectedMode);
     if (selectedMode === 'home') {
+      setIsRoadSensorOpen(false);
+    } else if (selectedMode === 'simulation') {
       setIsRoadSensorOpen(false);
     } else if (selectedMode === 'flow') {
       setMode('demo');
@@ -344,24 +348,54 @@ export default function App() {
       await new Promise(r => setTimeout(r, 200));
       setLoadingStep('LOADING ROAD NETWORK');
 
-      const url = `/api/geo-area?lat=${loc.latitude}&lon=${loc.longitude}&radius=2.0&name=${encodeURIComponent(loc.displayName)}`;
-      const res = await fetch(url);
-      const contentType = res.headers.get('content-type') || '';
-
-      if (!res.ok || !contentType.includes('application/json')) {
-        console.warn('Backend API unavailable on current host environment (HTTP ' + res.status + ').');
-        setLoadingStep('idle');
-        return;
+      let data: GeoAreaResponse | null = null;
+      try {
+        const url = `/api/geo-area?lat=${loc.latitude}&lon=${loc.longitude}&radius=2.0&name=${encodeURIComponent(loc.displayName)}`;
+        const res = await fetch(url);
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          data = await res.json();
+        }
+      } catch {
+        // Backend unavailable, fallback to static dataset below
       }
 
-      setLoadingStep('LOADING ENVIRONMENT');
-      const data: GeoAreaResponse = await res.json();
-      await new Promise(r => setTimeout(r, 150));
+      // If backend API is unavailable or returned non-JSON (e.g. Firebase Hosting)
+      if (!data) {
+        const normCity = cityName.toLowerCase();
+        let fallbackUrl = '/sample_maps/vijayawada_area.json';
+        if (normCity.includes('vijayawada')) {
+          fallbackUrl = '/sample_maps/vijayawada_area.json';
+        } else if (normCity.includes('madurai')) {
+          fallbackUrl = '/sample_maps/madurai_area.json';
+        } else if (normCity.includes('nellore')) {
+          fallbackUrl = '/sample_maps/nellore_area.json';
+        } else if (normCity.includes('siddipet')) {
+          fallbackUrl = '/sample_maps/siddipet_area.json';
+        } else if (normCity.includes('varkala')) {
+          fallbackUrl = '/sample_maps/varkala_area.json';
+        }
 
-      setRealLocationData(data);
-      setMode('real_location');
-      setLoadingStep('READY');
-      setTimeout(() => setLoadingStep('idle'), 800);
+        try {
+          const staticRes = await fetch(fallbackUrl);
+          if (staticRes.ok) {
+            data = await staticRes.json();
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (data) {
+        setLoadingStep('LOADING ENVIRONMENT');
+        await new Promise(r => setTimeout(r, 150));
+        setRealLocationData(data);
+        setMode('real_location');
+        setLoadingStep('READY');
+        setTimeout(() => setLoadingStep('idle'), 800);
+      } else {
+        setLoadingStep('idle');
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn('Location load note:', msg);
@@ -398,11 +432,13 @@ export default function App() {
     setTimeout(() => setLoadingStep('idle'), 800);
   }, [handlePause]);
 
-  // On App Launch: Clean initial mount on front page (no unnecessary background network requests)
+  // Auto-populate Route 3D map with default focused location (Vijayawada) on entering ROUTE mode
   useEffect(() => {
-    // Front page is active on startup
-  }, []);
-
+    if (mainNavMode === 'route' && !realLocationData && !isSearching) {
+      const defaultLoc = PRESET_CITIES.find(c => c.name.toLowerCase() === 'vijayawada')?.loc || PRESET_CITIES[0].loc;
+      handleSelectLocation(defaultLoc);
+    }
+  }, [mainNavMode, realLocationData, isSearching, handleSelectLocation]);
 
   // Phase 3: Run Intelligent Infrastructure Problem Analysis
   // Directly sends current authoritative realLocationData (OSM or User Import) for 100% parity
@@ -415,21 +451,51 @@ export default function App() {
     setSelectedJunction(null);
 
     try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(realLocationData),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || 'Failed to run infrastructure analysis on current map');
+      let data: AnalysisResultResponse | null = null;
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(realLocationData),
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // Backend unavailable
       }
 
-      const data: AnalysisResultResponse = await res.json();
-      setAnalysisData(data);
-      setIsAnalysisActive(true);
-      setShowSummaryPanel(true);
+      // If backend API unavailable (e.g. Firebase static hosting)
+      if (!data) {
+        const loc = (realLocationData.locationName || '').toLowerCase();
+        let fallbackUrl = '/sample_maps/vijayawada_analysis.json';
+        if (loc.includes('vijayawada')) {
+          fallbackUrl = '/sample_maps/vijayawada_analysis.json';
+        } else if (loc.includes('madurai')) {
+          fallbackUrl = '/sample_maps/madurai_analysis.json';
+        } else if (loc.includes('nellore')) {
+          fallbackUrl = '/sample_maps/nellore_analysis.json';
+        } else if (loc.includes('siddipet')) {
+          fallbackUrl = '/sample_maps/siddipet_analysis.json';
+        } else if (loc.includes('varkala')) {
+          fallbackUrl = '/sample_maps/varkala_analysis.json';
+        }
+
+        try {
+          const staticRes = await fetch(fallbackUrl);
+          if (staticRes.ok) {
+            data = await staticRes.json();
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (data) {
+        setAnalysisData(data);
+        setIsAnalysisActive(true);
+        setShowSummaryPanel(true);
+      }
     } catch (err) {
       console.error('Analysis error:', err);
     } finally {
@@ -812,8 +878,15 @@ export default function App() {
         />
       )}
 
+      {/* ── Interactive Vehicle Simulation & Piezoresistive Sensing Game Mode ── */}
+      {mainNavMode === 'simulation' && (
+        <VehicleSimulationView
+          onReturnToHome={() => handleSelectNavMode('home')}
+        />
+      )}
+
       {/* ── 3D Map Workstation Box Layout Container (Active for Flow, Build, Route) ── */}
-      {mainNavMode !== 'home' && (
+      {mainNavMode !== 'home' && mainNavMode !== 'simulation' && (
         <main className="map-box-wrapper">
           <div className={`map-box-frame ${isMapExpanded ? 'map-box-frame--expanded' : ''}`}>
             {/* 3D Viewport Header Bar with Back Button */}
@@ -872,6 +945,37 @@ export default function App() {
                     title="North Approach Queue"
                   >
                     Queue
+                  </button>
+                </div>
+              ) : mainNavMode === 'route' ? (
+                <div className="map-quick-cam-pills">
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'overview' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('overview')}
+                    title="True 3D Perspective Isometric View"
+                  >
+                    3D View
+                  </button>
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'top' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('top')}
+                    title="Top-Down Orthogonal 2D GIS View"
+                  >
+                    Top
+                  </button>
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'road_level' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('road_level')}
+                    title="Corridor Street-Level Perspective"
+                  >
+                    POV
+                  </button>
+                  <button
+                    className={`map-cam-btn ${cameraMode === 'flyover' ? 'active' : ''}`}
+                    onClick={() => setCameraMode('flyover')}
+                    title="Cinematic Orbital 3D View"
+                  >
+                    Cinematic
                   </button>
                 </div>
               ) : (
@@ -1088,24 +1192,7 @@ export default function App() {
           />
         )}
 
-        {/* Interactive Issue / Road / Junction Inspection Card */}
-        {mode === 'real_location' && (selectedIssue || selectedRoad || selectedJunction) && (
-          <IssueInspectionCard
-            issue={selectedIssue}
-            road={selectedRoad}
-            junction={selectedJunction}
-            onFocus={() => {
-              if (selectedIssue) handleInspectIssue(selectedIssue);
-              else if (selectedRoad) handleInspectRoad(selectedRoad);
-              else if (selectedJunction) handleInspectJunction(selectedJunction);
-            }}
-            onClose={() => {
-              setSelectedIssue(null);
-              setSelectedRoad(null);
-              setSelectedJunction(null);
-            }}
-          />
-        )}
+
 
         {/* Phase 4 Infrastructure Planning Panel */}
         {mode === 'real_location' && isPlanningOpen && (

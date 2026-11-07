@@ -8,7 +8,7 @@ interface FrontPageProps {
 }
 
 export const FrontPage: React.FC<FrontPageProps> = ({ onSelectMode, onScrollToDocs }) => {
-  const [activeTab, setActiveTab] = useState<'flow' | 'build' | 'route'>('flow');
+  const [activeTab, setActiveTab] = useState<'flow' | 'build' | 'route' | 'simulation'>('flow');
 
   return (
     <div className="front-page-container">
@@ -53,6 +53,15 @@ export const FrontPage: React.FC<FrontPageProps> = ({ onSelectMode, onScrollToDo
                 <span className="btn-arrow">→</span>
               </button>
               <button
+                id="hero-launch-simulation"
+                className="front-hero-btn front-hero-btn--primary"
+                onClick={() => onSelectMode('simulation')}
+                style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', border: '1px solid #38bdf8' }}
+              >
+                <span>Drive Simulation 🚗</span>
+                <span className="btn-arrow">→</span>
+              </button>
+              <button
                 className="front-hero-btn front-hero-btn--ghost"
                 onClick={onScrollToDocs}
               >
@@ -86,6 +95,13 @@ export const FrontPage: React.FC<FrontPageProps> = ({ onSelectMode, onScrollToDo
           >
             <span className="tab-idx">03</span>
             <span className="tab-name">ROUTE — DIGITAL TWIN</span>
+          </button>
+          <button
+            className={`spotlight-tab ${activeTab === 'simulation' ? 'spotlight-tab--active' : ''}`}
+            onClick={() => setActiveTab('simulation')}
+          >
+            <span className="tab-idx">04</span>
+            <span className="tab-name">SIMULATION — DRIVE &amp; SENSE</span>
           </button>
         </div>
 
@@ -189,6 +205,43 @@ export const FrontPage: React.FC<FrontPageProps> = ({ onSelectMode, onScrollToDo
                 onClick={() => onSelectMode('route')}
               >
                 Launch Route Mode →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: SIMULATION Spotlight */}
+        {activeTab === 'simulation' && (
+          <div className="spotlight-display-card">
+            <div className="spotlight-image-container">
+              <img
+                src="/images/flow-infographic.png"
+                alt="Interactive Vehicle Simulation & Piezoresistive Sensing Game"
+                className="spotlight-image"
+                loading="eager"
+              />
+              <div className="spotlight-overlay-action">
+                <button
+                  className="spotlight-launch-btn"
+                  onClick={() => onSelectMode('simulation')}
+                  style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', borderColor: '#38bdf8' }}
+                >
+                  <span>Start Drivable Vehicle Simulation 🚗</span>
+                  <span className="btn-arrow">→</span>
+                </button>
+              </div>
+            </div>
+            <div className="spotlight-meta-bar">
+              <div className="meta-info">
+                <span className="meta-tag">INTERACTIVE GAME &amp; SENSING ENGINE</span>
+                <span className="meta-desc">Take manual control of a vehicle, steer across junctions, and trigger real-time piezoresistive axle pressure sensors and adaptive signal waves.</span>
+              </div>
+              <button
+                className="meta-action-btn"
+                onClick={() => onSelectMode('simulation')}
+                style={{ background: '#0284c7' }}
+              >
+                Drive Vehicle →
               </button>
             </div>
           </div>

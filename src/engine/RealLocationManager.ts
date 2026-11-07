@@ -146,14 +146,14 @@ export class RealLocationManager {
     const groundSize = Math.max(1600, maxSpan * 2.8);
     const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 16, 16);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0xf2efe9, // Google Maps crisp light land canvas
+      color: 0xedf2f7, // Clean subtle architectural terrain
       roughness: 0.96,
       metalness: 0.02,
     });
     this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
     this.groundMesh.name = 'real-ground-plane';
     this.groundMesh.rotation.x = -Math.PI / 2;
-    this.groundMesh.position.set(centerX, -0.01, centerZ);
+    this.groundMesh.position.set(centerX, -0.05, centerZ);
 
     this.groundMesh.receiveShadow = true;
     this.rootGroup.add(this.groundMesh);

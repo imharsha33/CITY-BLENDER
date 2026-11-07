@@ -1,6 +1,6 @@
 import React from 'react';
 import type { LocationResult, LayerVisibility, GeoAreaResponse } from '../../types/geo';
-import { CitySelectBar } from './CitySelectBar';
+import { CitySelectBar, PRESET_CITIES } from './CitySelectBar';
 import { LayerControls } from './LayerControls';
 import { MapImportControl } from './MapImportControl';
 import type { DemoPlanType } from '../../data/planScenarios';
@@ -72,8 +72,26 @@ export const RouteToolbar: React.FC<RouteToolbarProps> = ({
 
   return (
     <div className="route-viewport-toolbar">
-      {/* Left: Location selection, Map import & Layers */}
+      {/* Left: Focused real-time city selector, Search & Layers */}
       <div className="route-toolbar__left">
+        <div className="route-quick-city-group">
+          <span className="route-quick-city-label">3D REAL-TIME:</span>
+          {PRESET_CITIES.map((c) => {
+            const isActive = locationName?.toLowerCase().includes(c.name.toLowerCase());
+            return (
+              <button
+                key={c.name}
+                className={`route-city-pill ${isActive ? 'route-city-pill--active' : ''}`}
+                onClick={() => onSelectLocation(c.loc)}
+                disabled={isSearching}
+                title={`Switch real-time 3D map to ${c.name}, ${c.region}`}
+              >
+                <span className="route-city-pill__dot" />
+                <span className="route-city-pill__name">{c.name.toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </div>
         <CitySelectBar
           locationName={locationName}
           onSelectLocation={onSelectLocation}

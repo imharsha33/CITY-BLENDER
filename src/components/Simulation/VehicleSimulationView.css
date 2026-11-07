@@ -1,0 +1,573 @@
+/* ── Vehicle Simulation & Sensing Game Styles (Clean, Compact Light Theme) ─ */
+
+.simulation-game-root {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 64px);
+  background: #e8f2fc;
+  overflow: hidden;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.simulation-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Crash Banner Alert ────────────────────────────────────────────────── */
+.sim-crash-banner {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ef4444;
+  color: #ffffff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
+  z-index: 50;
+  animation: crash-bounce 0.2s ease-out;
+  pointer-events: none;
+}
+
+@keyframes crash-bounce {
+  0% { transform: translate(-50%, -8px) scale(0.95); opacity: 0; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+/* ── Unified Slim Navigation Bar (Top) ─────────────────────────────────── */
+.simulation-hud-bar {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  right: 14px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 0 10px;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  z-index: 30;
+  pointer-events: auto;
+}
+
+/* Left Group */
+.hud-group-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-btn-home {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-btn-home:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.hud-badge-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0284c7;
+  box-shadow: 0 0 6px #0284c7;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.hud-title-text {
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* Center: Compact Vehicle Chips */
+.hud-group-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hud-vehicle-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-vehicle-chip:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.hud-vehicle-chip--active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.chip-icon {
+  font-size: 12px;
+}
+
+.chip-name {
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+
+/* Right Group */
+.hud-group-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-metric-pill {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+}
+
+.hud-metric-pill--next {
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.25);
+}
+
+.hud-metric-pill--next .pill-val {
+  color: #15803d;
+}
+
+.pill-val {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.pill-sub {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.hud-cam-toggles {
+  display: flex;
+  gap: 2px;
+  background: #f1f5f9;
+  padding: 2px;
+  border-radius: 5px;
+}
+
+.hud-cam-btn {
+  background: transparent;
+  border: none;
+  color: #475569;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-cam-btn:hover {
+  color: #0f172a;
+}
+
+.hud-cam-btn--active {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.hud-btn-reset {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #b45309;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-btn-reset:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: #92400e;
+}
+
+/* ── Mini City Tactical Radar (Compact Top-Left) ───────────────────────── */
+.simulation-hud-minimap {
+  position: absolute;
+  top: 58px;
+  left: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 6px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  z-index: 20;
+}
+
+.minimap-canvas {
+  display: block;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.minimap-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.legend-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot--player { background: #0284c7; }
+.legend-dot--traffic { background: #d97706; }
+.legend-dot--signal { background: #16a34a; }
+
+/* ── Collapsible Missions Pill (Top-Right) ─────────────────────────────── */
+.simulation-hud-missions {
+  position: absolute;
+  top: 58px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  z-index: 20;
+  max-width: 280px;
+}
+
+.missions-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+  cursor: pointer;
+  border-radius: 8px;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.missions-toggle-btn:hover {
+  background: #f1f5f9;
+}
+
+.toggle-icon {
+  font-size: 12px;
+}
+
+.toggle-text {
+  letter-spacing: 0.02em;
+}
+
+.toggle-arrow {
+  margin-left: auto;
+  font-size: 8px;
+  color: #64748b;
+}
+
+.missions-dropdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 10px 10px 10px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mission-dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 10.5px;
+  color: #475569;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.m-check {
+  font-weight: 800;
+  color: #94a3b8;
+  min-width: 12px;
+}
+
+.mission-dropdown-item--done {
+  color: #15803d;
+}
+
+.mission-dropdown-item--done .m-check {
+  color: #16a34a;
+}
+
+/* ── Compact HUD Speedometer (Bottom-Left) ─────────────────────────────── */
+.simulation-hud-speedometer {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 10px 14px;
+  border-radius: 10px;
+  min-width: 135px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  z-index: 20;
+}
+
+.hud-gear-chip {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 900;
+  background: rgba(2, 132, 199, 0.12);
+  color: #0284c7;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.hud-speed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.hud-speed-digits {
+  font-size: 30px;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-speed-unit {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.hud-speed-track {
+  width: 100%;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.hud-speed-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0284c7, #06b6d4, #f59e0b);
+  border-radius: 2px;
+  transition: width 0.08s linear;
+}
+
+.hud-speed-hint {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* ── Sleek Piezoresistive Telemetry Monitor (Bottom-Right) ──────────────── */
+.simulation-hud-telemetry {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(2, 132, 199, 0.22);
+  padding: 10px 14px;
+  border-radius: 10px;
+  min-width: 230px;
+  max-width: 260px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  z-index: 20;
+}
+
+.telemetry-bar-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 5px;
+}
+
+.tel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0284c7;
+}
+
+.tel-title {
+  color: #0284c7;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.tel-live-badge {
+  margin-left: auto;
+  font-size: 8.5px;
+  font-weight: 800;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.telemetry-vehicle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+}
+
+.tel-vname {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tel-vclass {
+  font-size: 9px;
+  font-weight: 800;
+  color: #0284c7;
+  background: rgba(2, 132, 199, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.telemetry-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tel-stat-box {
+  background: #f8fafc;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+}
+
+.tel-stat-lbl {
+  display: block;
+  font-size: 8px;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 2px;
+  letter-spacing: 0.03em;
+}
+
+.tel-stat-num {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.tel-stat-num--active {
+  color: #0284c7;
+}
+
+.telemetry-zone-row {
+  font-size: 9.5px;
+  color: #475569;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tel-zone-lbl {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.tel-zone-val {
+  font-weight: 700;
+  color: #0284c7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

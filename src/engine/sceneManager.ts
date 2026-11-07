@@ -400,7 +400,7 @@ export class SceneManager {
 
       const b = this.realLocationMgr.getBounds();
       if (b) {
-        this.camCtrl.fitWholeArea(b, 2.0);
+        this.camCtrl.set3DView(b, 2.0);
       } else {
         this.camCtrl.flyTo(new THREE.Vector3(0, 220, 180), new THREE.Vector3(0, 0, 0), 2.2);
       }
@@ -425,7 +425,7 @@ export class SceneManager {
 
     const b = this.realLocationMgr.getBounds();
     if (b) {
-      this.camCtrl.fitWholeArea(b, 2.0);
+      this.camCtrl.set3DView(b, 2.0);
     }
   }
 
@@ -468,6 +468,17 @@ export class SceneManager {
   setCinematicView(): void {
     const b = this.realLocationMgr.getBounds();
     this.camCtrl.setCinematicView(b, 2.0);
+  }
+
+  setStreetView(): void {
+    const b = this.realLocationMgr.getBounds();
+    const cX = b ? b.centerX : 0;
+    const cZ = b ? b.centerZ : 0;
+    this.camCtrl.flyTo(
+      new THREE.Vector3(cX, 28, cZ + 75),
+      new THREE.Vector3(cX, 6, cZ),
+      1.6
+    );
   }
 
   zoom(direction: 'in' | 'out'): void {

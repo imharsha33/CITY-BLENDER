@@ -151,12 +151,24 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
   // Sync camera mode
   useEffect(() => {
     if (!managerRef.current) return;
-    if (cameraMode) {
-      managerRef.current.setCameraMode(cameraMode);
+    if (mode === 'real_location') {
+      if (cameraMode === 'overview') {
+        managerRef.current.set3DView();
+      } else if (cameraMode === 'top') {
+        managerRef.current.setTopDownView();
+      } else if (cameraMode === 'flyover') {
+        managerRef.current.setCinematicView();
+      } else if (cameraMode === 'road_level') {
+        managerRef.current.setStreetView();
+      }
     } else {
-      managerRef.current.setAutoCam(autoCam);
+      if (cameraMode) {
+        managerRef.current.setCameraMode(cameraMode);
+      } else {
+        managerRef.current.setAutoCam(autoCam);
+      }
     }
-  }, [cameraMode, autoCam]);
+  }, [cameraMode, autoCam, mode]);
 
   // Sync lighting mode
   useEffect(() => {
@@ -375,9 +387,9 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
       {mode === 'real_location' && (
         <CityNavigationControls
           currentView={currentView}
-          hasSelectedRoad={!!selectedRoad}
-          hasSelectedIssue={!!selectedIssue}
-          hasSelectedStrategy={!!strategy}
+          hasSelectedRoad={false}
+          hasSelectedIssue={false}
+          hasSelectedStrategy={false}
           onFitWholeArea={() => {
             setCurrentView('whole_area');
             managerRef.current?.fitWholeArea();

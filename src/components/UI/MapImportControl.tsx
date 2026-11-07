@@ -65,25 +65,47 @@ export const MapImportControl: React.FC<MapImportControlProps> = ({
     });
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      let areaData: GeoAreaResponse | null = null;
 
-      const res = await fetch('/api/import-map', {
-        method: 'POST',
-        body: formData,
-      });
+      // 1. Try server-side map importer first
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/import-map', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          areaData = await res.json();
+        }
+      } catch {
+        // Backend unavailable, fallback to client-side parsing
+      }
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        const reason = errJson.detail || `Server returned HTTP ${res.status}`;
+      // 2. If backend is unavailable or failed, parse client-side (for .geojson, .json)
+      if (!areaData && (ext === '.geojson' || ext === '.json')) {
+        try {
+          const text = await file.text();
+          const json = JSON.parse(text);
+          const { parseGeoJsonClientSide } = await import('../../engine/clientGeoJsonParser');
+          areaData = parseGeoJsonClientSide(file.name, json);
+        } catch (parseErr: unknown) {
+          const msg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+          setValidation({
+            status: 'invalid',
+            message: `MAP INVALID: Could not parse GeoJSON (${msg})`,
+          });
+          return;
+        }
+      }
+
+      if (!areaData) {
         setValidation({
           status: 'invalid',
-          message: `MAP INVALID: ${reason}`,
+          message: 'MAP INVALID: Failed to process map file on current server.',
         });
         return;
       }
-
-      const areaData: GeoAreaResponse = await res.json();
 
       // Geometry & feature validity check
       if (!areaData.roads || areaData.roads.length === 0) {
@@ -117,7 +139,7 @@ export const MapImportControl: React.FC<MapImportControlProps> = ({
       const msg = err instanceof Error ? err.message : String(err);
       setValidation({
         status: 'invalid',
-        message: `MAP INVALID: Network upload failed (${msg})`,
+        message: `MAP INVALID: Processing failed (${msg})`,
       });
     }
   };

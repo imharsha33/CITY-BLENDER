@@ -217,18 +217,19 @@ export class CameraController {
 
   /**
    * 3D Perspective Isometric View (45-degree angle).
+   * Positioned close enough to see 3D buildings, elevated flyovers, and road network with depth.
    */
   set3DView(bounds: GeoBounds | null, duration = 1.6) {
     this._mode = 'view_3d';
+    this.isCinematicOrbit = false;
     const centerX = bounds ? bounds.centerX : 0;
     const centerZ = bounds ? bounds.centerZ : 0;
     const maxSpan = bounds ? bounds.maxSpan : 600;
 
-    const fovRad = (this.camera.fov * Math.PI) / 180;
-    const requiredDistance = (maxSpan / 2) / Math.tan(fovRad / 2);
-    const altitude = Math.max(160, Math.min(2800, requiredDistance * 0.95));
-    const offsetZ = altitude * 0.75;
-    const offsetX = -altitude * 0.35;
+    // True immersive 3D isometric perspective
+    const altitude = Math.max(160, Math.min(480, maxSpan * 0.25));
+    const offsetZ = altitude * 0.95;
+    const offsetX = -altitude * 0.45;
 
     const destPos = new THREE.Vector3(centerX + offsetX, altitude, centerZ + offsetZ);
     const destLookAt = new THREE.Vector3(centerX, 0, centerZ);
@@ -244,14 +245,13 @@ export class CameraController {
   setCinematicView(bounds: GeoBounds | null, duration = 2.0) {
     this._mode = 'hero';
     this.isCinematicOrbit = true;
+    this.orbitSpeed = 0.002;
     const centerX = bounds ? bounds.centerX : 0;
     const centerZ = bounds ? bounds.centerZ : 0;
     const maxSpan = bounds ? bounds.maxSpan : 600;
 
-    const fovRad = (this.camera.fov * Math.PI) / 180;
-    const requiredDistance = (maxSpan / 2) / Math.tan(fovRad / 2);
-    const altitude = Math.max(220, Math.min(2600, requiredDistance * 1.1));
-    const offsetZ = altitude * 0.85;
+    const altitude = Math.max(180, Math.min(460, maxSpan * 0.28));
+    const offsetZ = altitude * 0.95;
 
     const destPos = new THREE.Vector3(centerX - altitude * 0.5, altitude, centerZ + offsetZ);
     const destLookAt = new THREE.Vector3(centerX, 0, centerZ);
