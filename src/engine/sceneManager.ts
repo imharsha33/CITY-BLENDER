@@ -352,7 +352,7 @@ export class SceneManager {
       this.camCtrl.flyTo(new THREE.Vector3(32, 16, -26), new THREE.Vector3(0, 6.2, 0), 1.6);
     } else if (plan === 'ring_road') {
       this.buildRingRoadDemoSubtree();
-      this.camCtrl.flyTo(new THREE.Vector3(42, 28, 48), new THREE.Vector3(12, 0, -6), 1.6);
+      this.camCtrl.flyTo(new THREE.Vector3(70, 68, 85), new THREE.Vector3(0, 2, 0), 1.6);
     } else if (plan === 'road_sensor') {
       const junction = this.buildRoadSensorDemoSubtree();
       this.autoCam = false;
@@ -391,7 +391,7 @@ export class SceneManager {
       if (this.currentPlanType === 'flyover') {
         this.camCtrl.flyTo(new THREE.Vector3(32, 16, -26), new THREE.Vector3(0, 6.2, 0), 1.8);
       } else if (this.currentPlanType === 'ring_road') {
-        this.camCtrl.flyTo(new THREE.Vector3(42, 28, 48), new THREE.Vector3(12, 0, -6), 1.8);
+        this.camCtrl.flyTo(new THREE.Vector3(70, 68, 85), new THREE.Vector3(0, 2, 0), 1.8);
       } else {
         this.camCtrl.flyTo(new THREE.Vector3(26, 16, -32), new THREE.Vector3(0, 1.2, 0), 1.8);
       }
@@ -787,13 +787,11 @@ export class SceneManager {
   }
 
   private updateRingRoadVehicles(delta: number) {
-    // Exact radii matching the 4 lanes on the 3D roadbed (R=74, CarrW=7.5, MedW=2.5)
-    // Outer lanes: 80.85 (slow), 77.10 (fast). Inner lanes: 70.90 (fast), 67.15 (slow)
-    const RING_LANE_RADII = [80.85, 77.10, 70.90, 67.15];
-    const A0 = -Math.PI * 0.95;
-    const A1 = Math.PI * 0.35;
-    const ASPAN = A1 - A0;
-    const ROAD_SURFACE_Y = 0.21; // Exactly on top of the 3D asphalt roadbed
+    // Exact radii matching the 4 lanes on the full 360° orbital expressway (R=75m, CarrW=7.5m, MedW=3.0m)
+    // Outer carriageway (clockwise): 82.25m (slow), 78.50m (fast)
+    // Inner carriageway (counter-clockwise): 71.50m (fast), 67.75m (slow)
+    const RING_LANE_RADII = [82.25, 78.50, 71.50, 67.75];
+    const ROAD_SURFACE_Y = 0.14; // Flush on top of asphalt surface
 
     this.vehicles.forEach((v, idx) => {
       const visible = this._progress < 0.18 || this._progress >= 0.82;
@@ -803,27 +801,23 @@ export class SceneManager {
       const anyV = v as unknown as { currentAngle?: number; radialDist?: number };
 
       if (v.config.laneIndex >= 4) {
-        // Feeder avenue traffic joining via radial entrance towards roundabout
-        const ang = A0 + ASPAN * 0.22;
-        const rY = -Math.atan2(Math.sin(ang), Math.cos(ang)) + Math.PI / 2;
-        anyV.radialDist = (anyV.radialDist || 16) + v.config.speed * delta * 35;
-        if (anyV.radialDist > 62) anyV.radialDist = 16;
-        const fx = Math.cos(ang) * anyV.radialDist;
-        const fz = Math.sin(ang) * anyV.radialDist;
-        v.group.position.set(fx, ROAD_SURFACE_Y, fz);
-        v.group.rotation.set(0, rY, 0);
+        // Feeder avenue traffic traveling radially from city core to the East Roundabout
+        anyV.radialDist = (anyV.radialDist || 18) + v.config.speed * delta * 40;
+        if (anyV.radialDist > 56) anyV.radialDist = 18;
+        v.group.position.set(anyV.radialDist, ROAD_SURFACE_Y, 0);
+        v.group.rotation.set(0, Math.PI / 2, 0); // Heading East (+X)
       } else {
         const laneR = RING_LANE_RADII[Math.min(v.config.laneIndex, 3)];
         const dir = v.config.direction;
-        const angularSpeed = (v.config.speed * delta * 30) / laneR;
+        const angularSpeed = (v.config.speed * delta * 28) / laneR;
 
         if (anyV.currentAngle === undefined) {
-          anyV.currentAngle = A0 + ((idx * 0.28) % ASPAN);
+          anyV.currentAngle = (idx / 7) * Math.PI * 2;
         }
 
         anyV.currentAngle += dir * angularSpeed;
-        if (anyV.currentAngle > A1) anyV.currentAngle = A0;
-        if (anyV.currentAngle < A0) anyV.currentAngle = A1;
+        if (anyV.currentAngle > Math.PI * 2) anyV.currentAngle -= Math.PI * 2;
+        if (anyV.currentAngle < 0) anyV.currentAngle += Math.PI * 2;
 
         const a = anyV.currentAngle;
         const x = Math.cos(a) * laneR;

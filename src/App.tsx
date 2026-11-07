@@ -1333,34 +1333,6 @@ export default function App() {
             }}
           />
         )}
-
-        {/* Minimal Hero Completion Badge (Demo Mode Only) */}
-        {showHero && mode === 'demo' && (
-          <div className="hero-completion-card">
-            <span className="hero-completion-card__badge">INFRASTRUCTURE UPGRADE COMPLETE</span>
-            <h2 className="hero-completion-card__title">
-              {demoPlan === 'flyover'
-                ? 'Elevated Flyover Viaduct Operational'
-                : demoPlan === 'ring_road'
-                ? 'Orbital Ring Road Bypass Operational'
-                : '4-Lane Divided Carriageway Complete'}
-            </h2>
-            <p className="hero-completion-card__subtitle">
-              {demoPlan === 'flyover'
-                ? 'Dual-Level Grade Separation Complete • Phase 5 Commissioned'
-                : demoPlan === 'ring_road'
-                ? 'Peripheral Bypass Logistics Beltway Active • Phase 5 Commissioned'
-                : 'Divided 4-Lane Arterial Complete • Phase 5 Commissioned'}
-            </p>
-            <button
-
-              className="neumorphic-btn neumorphic-btn--primary hero-completion-card__btn"
-              onClick={handleReset}
-            >
-              <span>REPLAY SIMULATION</span>
-            </button>
-          </div>
-        )}
             </div>
           </div>
         </div>

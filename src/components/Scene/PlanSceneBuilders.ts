@@ -773,341 +773,348 @@ export function buildRingRoad3D(): RingRoadSceneElements {
   const root = new THREE.Group();
   root.name = 'ring-road-root';
 
-  const R         = 74.0;
-  const CARR_W    = 7.5;   // Each carriageway (2 express lanes × 3.75m)
-  const MEDIAN_W  = 2.5;   // Raised landscaped median
+  const R         = 75.0;  // Continuous 360° orbital ring radius
+  const CARR_W    = 7.5;   // 2 express lanes (3.75m each)
+  const MEDIAN_W  = 3.0;   // Raised central landscaped median
   const SHLDR_W   = 2.0;   // Hard paved shoulder
-  const TOTAL_W   = CARR_W * 2 + MEDIAN_W + SHLDR_W * 2; // ~21.5m total
-  const A0        = -Math.PI * 0.95;
-  const A1        =  Math.PI * 0.35;
-  const ASPAN     = A1 - A0;
-  const SEGS      = 80;
+  const RI        = R - MEDIAN_W / 2 - CARR_W - SHLDR_W; // 62.0m inner edge
+  const RO        = R + MEDIAN_W / 2 + CARR_W + SHLDR_W; // 88.0m outer edge
+  const SEGS      = 160;   // Smooth circular segments
 
-  // 1. Terrain & Peripheral Urban Canvas ────────────────────────────────────────
+  // 1. Terrain & Metropolitan Canvas ──────────────────────────────────────────
   const ter = new THREE.Group();
   const gnd = new THREE.Mesh(
-    new THREE.PlaneGeometry(360, 360),
+    new THREE.PlaneGeometry(380, 380),
     GRASS_MAT
   );
   gnd.rotation.x = -Math.PI / 2;
-  gnd.position.y = -0.01; // Sits strictly below road levels
+  gnd.position.y = -0.01; // Below road layers
   gnd.receiveShadow = true;
   ter.add(gnd);
 
   // Urban interior core inside the orbital ring
   const innerUrbanCore = new THREE.Mesh(
-    new THREE.CircleGeometry(R - TOTAL_W / 2 - 4, 64),
-    new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 })
+    new THREE.CircleGeometry(RI - 2.0, 96),
+    new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.82 })
   );
   innerUrbanCore.rotation.x = -Math.PI / 2;
-  innerUrbanCore.position.y = 0.001;
+  innerUrbanCore.position.y = 0.002;
   innerUrbanCore.receiveShadow = true;
   ter.add(innerUrbanCore);
   root.add(ter);
 
-  // 2. Orbital Expressway 3D Roadbed & Pavement Layers ─────────────────────────
+  // 2. Full 360° Orbital Expressway Pavement Layers ───────────────────────────
   const orbitalRingPavement = new THREE.Group();
 
-  function add3DRingLayer(
-    rInner: number, rOuter: number,
-    yBottom: number, height: number,
+  function addConcentricRing(
+    rIn: number, rOut: number,
+    y: number,
     mat: THREE.Material
   ) {
-    const ringShape = new THREE.Shape();
-    ringShape.absarc(0, 0, rOuter, A0, A1, false);
-    const holePath = new THREE.Path();
-    holePath.absarc(0, 0, rInner, A0, A1, true);
-    ringShape.holes.push(holePath);
-
-    const geo = new THREE.ExtrudeGeometry(ringShape, {
-      depth: height,
-      bevelEnabled: false,
-      curveSegments: SEGS,
-    });
+    const geo = new THREE.RingGeometry(rIn, rOut, SEGS);
     geo.rotateX(-Math.PI / 2);
-
     const m = new THREE.Mesh(geo, mat);
-    m.position.y = yBottom;
+    m.position.y = y;
     m.receiveShadow = true;
-    m.castShadow = true;
     orbitalRingPavement.add(m);
     return m;
   }
 
-  const RI = R - TOTAL_W / 2;
-  const RO = R + TOTAL_W / 2;
-
-  // Sub-base gravel foundation (0.10m thickness)
-  add3DRingLayer(RI - 0.6, RO + 0.6, 0.02, 0.08, ROAD_BASE_MAT);
+  // Foundation sub-base
+  addConcentricRing(RI - 0.5, RO + 0.5, 0.04, ROAD_BASE_MAT);
 
   // Inner hard shoulder
-  add3DRingLayer(RI, RI + SHLDR_W, 0.08, 0.10, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+  addConcentricRing(RI, RI + SHLDR_W, 0.08, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
 
-  // Inner carriageway (anti-clockwise / inbound 2 lanes)
-  add3DRingLayer(RI + SHLDR_W, RI + SHLDR_W + CARR_W, 0.08, 0.12, FRESH_ASPHALT_MAT);
+  // Inner carriageway (counter-clockwise 2 lanes)
+  addConcentricRing(RI + SHLDR_W, R - MEDIAN_W / 2, 0.12, FRESH_ASPHALT_MAT);
 
-  // Outer carriageway (clockwise / outbound 2 lanes)
-  add3DRingLayer(RO - SHLDR_W - CARR_W, RO - SHLDR_W, 0.08, 0.12, FRESH_ASPHALT_MAT);
+  // Outer carriageway (clockwise 2 lanes)
+  addConcentricRing(R + MEDIAN_W / 2, RO - SHLDR_W, 0.12, FRESH_ASPHALT_MAT);
 
   // Outer hard shoulder
-  add3DRingLayer(RO - SHLDR_W, RO, 0.08, 0.10, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+  addConcentricRing(RO - SHLDR_W, RO, 0.08, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
 
-  // Raised stone curbs along inner and outer perimeter
-  [RI - 0.15, RO + 0.15].forEach(kr => {
-    add3DRingLayer(kr - 0.20, kr + 0.20, 0.08, 0.22, CURB_MAT);
+  // Vertical stone curb walls along inner and outer perimeter
+  [RI, RO].forEach(kr => {
+    const curbGeo = new THREE.CylinderGeometry(kr, kr, 0.22, SEGS, 1, true);
+    const curb = new THREE.Mesh(curbGeo, CURB_MAT);
+    curb.position.y = 0.11;
+    curb.castShadow = true;
+    orbitalRingPavement.add(curb);
   });
 
-  // Emissive Dashed Lane Dividers Along Sweeping Curve
-  const MY = 0.22;
-  [R - MEDIAN_W / 2 - CARR_W / 2, R + MEDIAN_W / 2 + CARR_W / 2].forEach(rc => {
-    const dashCount = 48;
-    for (let i = 0; i < dashCount; i++) {
-      const a = A0 + (i + 0.5) / dashCount * ASPAN;
-      const rY = -Math.atan2(Math.cos(a), Math.sin(a));
+  // Solid white shoulder edge lines (full 360° rings)
+  const MY = 0.13;
+  [RI + SHLDR_W + 0.12, RO - SHLDR_W - 0.12].forEach(re => {
+    const edgeGeo = new THREE.RingGeometry(re - 0.10, re + 0.10, SEGS);
+    edgeGeo.rotateX(-Math.PI / 2);
+    const edge = new THREE.Mesh(edgeGeo, WHITE_MARK_MAT);
+    edge.position.y = MY;
+    orbitalRingPavement.add(edge);
+  });
+
+  // Solid yellow median edge lines (full 360° rings)
+  [R - MEDIAN_W / 2 - 0.12, R + MEDIAN_W / 2 + 0.12].forEach(ym => {
+    const ymGeo = new THREE.RingGeometry(ym - 0.10, ym + 0.10, SEGS);
+    ymGeo.rotateX(-Math.PI / 2);
+    const yellow = new THREE.Mesh(ymGeo, YELLOW_MARK_MAT);
+    yellow.position.y = MY;
+    orbitalRingPavement.add(yellow);
+  });
+
+  // Emissive dashed lane dividers around the full 360° loop
+  const DASH_COUNT = 72;
+  const innerLaneDividerR = (RI + SHLDR_W + (R - MEDIAN_W / 2)) / 2; // 67.75m
+  const outerLaneDividerR = (R + MEDIAN_W / 2 + (RO - SHLDR_W)) / 2; // 82.25m
+
+  [innerLaneDividerR, outerLaneDividerR].forEach(dividerR => {
+    for (let i = 0; i < DASH_COUNT; i++) {
+      const a = (i / DASH_COUNT) * Math.PI * 2;
       const d = new THREE.Mesh(
-        new THREE.BoxGeometry(0.22, 0.02, 3.8),
+        new THREE.BoxGeometry(0.20, 0.02, 3.5),
         WHITE_MARK_MAT
       );
-      d.position.set(Math.cos(a) * rc, MY, Math.sin(a) * rc);
-      d.rotation.y = rY;
+      d.position.set(Math.cos(a) * dividerR, MY + 0.01, Math.sin(a) * dividerR);
+      d.rotation.y = -a;
       orbitalRingPavement.add(d);
-    }
-  });
-
-  // Solid White Shoulder Edge Lines
-  [RI + SHLDR_W + 0.2, RO - SHLDR_W - 0.2].forEach(re => {
-    const segs = 65;
-    for (let i = 0; i < segs; i++) {
-      const a = A0 + (i + 0.5) / segs * ASPAN;
-      const rY = -Math.atan2(Math.cos(a), Math.sin(a));
-      const sl = ASPAN * re / segs + 0.20;
-      const e = new THREE.Mesh(
-        new THREE.BoxGeometry(0.20, 0.02, sl),
-        WHITE_MARK_MAT
-      );
-      e.position.set(Math.cos(a) * re, MY, Math.sin(a) * re);
-      e.rotation.y = rY;
-      orbitalRingPavement.add(e);
     }
   });
 
   root.add(orbitalRingPavement);
 
-  // 3. Central Raised Landscaped Median with Jersey Crash Barriers ─────────────
+  // 3. Central Raised Landscaped Median with Continuous Jersey Barriers ────────
   const orbitalMedian = new THREE.Group();
 
-  // Raised concrete plinth for median
-  const medBase = add3DRingLayer(R - MEDIAN_W / 2, R + MEDIAN_W / 2, 0.10, 0.24, CURB_MAT);
+  // Raised stone median plinth
+  const medBaseGeo = new THREE.RingGeometry(R - MEDIAN_W / 2, R + MEDIAN_W / 2, SEGS);
+  medBaseGeo.rotateX(-Math.PI / 2);
+  const medBase = new THREE.Mesh(medBaseGeo, CURB_MAT);
+  medBase.position.y = 0.16;
   orbitalMedian.add(medBase);
 
-  // Green landscaped planter turf
-  const medTurf = add3DRingLayer(
-    R - MEDIAN_W / 2 + 0.35, R + MEDIAN_W / 2 - 0.35,
-    0.34, 0.05,
-    new THREE.MeshStandardMaterial({ color: 0x3e7b2a, roughness: 0.85 })
-  );
+  // Green planter strip with hedge shrubs
+  const medTurfGeo = new THREE.RingGeometry(R - MEDIAN_W / 2 + 0.35, R + MEDIAN_W / 2 - 0.35, SEGS);
+  medTurfGeo.rotateX(-Math.PI / 2);
+  const medTurf = new THREE.Mesh(medTurfGeo, new THREE.MeshStandardMaterial({ color: 0x3e7b2a, roughness: 0.85 }));
+  medTurf.position.y = 0.22;
   orbitalMedian.add(medTurf);
 
-  // New Jersey profile crash barrier along center-line
-  const barrierSegs = 42;
-  for (let i = 0; i < barrierSegs; i++) {
-    const a = A0 + (i + 0.5) / barrierSegs * ASPAN;
-    const rY = -Math.atan2(Math.cos(a), Math.sin(a));
-    const sl = ASPAN * R / barrierSegs + 0.15;
+  // Modular New Jersey crash barrier blocks placed radially around R=75m
+  const BARRIER_COUNT = 56;
+  for (let i = 0; i < BARRIER_COUNT; i++) {
+    const a = (i / BARRIER_COUNT) * Math.PI * 2;
+    const arcLen = (Math.PI * 2 * R) / BARRIER_COUNT;
     const b = new THREE.Mesh(
-      new THREE.BoxGeometry(0.60, 0.90, sl),
+      new THREE.BoxGeometry(0.55, 0.85, arcLen * 0.95),
       MEDIAN_BARRIER_MAT
     );
-    b.position.set(Math.cos(a) * R, 0.80, Math.sin(a) * R);
-    b.rotation.y = rY;
+    b.position.set(Math.cos(a) * R, 0.65, Math.sin(a) * R);
+    b.rotation.y = -a;
     b.castShadow = true;
     orbitalMedian.add(b);
-
-    // Double yellow edge lines on both sides of median
-    [-0.55, 0.55].forEach(mo => {
-      const ym = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, sl), YELLOW_MARK_MAT);
-      ym.position.set(Math.cos(a) * (R + mo), MY + 0.01, Math.sin(a) * (R + mo));
-      ym.rotation.y = rY;
-      orbitalMedian.add(ym);
-    });
   }
   root.add(orbitalMedian);
 
-  // 4. Outer W-Beam Guardrails with Reflective Delineators ───────────────────────
+  // 4. Outer W-Beam Guardrails with Galvanized Safety Rails ────────────────────
   const orbitalBarriers = new THREE.Group();
-  [RI + 0.15, RO - 0.15].forEach(br => {
-    const postCount = 50;
-    for (let i = 0; i <= postCount; i++) {
-      const a = A0 + (i / postCount) * ASPAN;
-      const pg = new THREE.CylinderGeometry(0.08, 0.08, 0.95, 8);
-      const post = new THREE.Mesh(pg, STEEL_STRUCTURE_MAT);
-      post.position.set(Math.cos(a) * br, 0.58, Math.sin(a) * br);
-      post.castShadow = true;
-      orbitalBarriers.add(post);
-    }
-    const railCount = 48;
-    for (let i = 0; i < railCount; i++) {
-      const a = A0 + (i + 0.5) / railCount * ASPAN;
-      const rY = -Math.atan2(Math.cos(a), Math.sin(a));
-      const sl = ASPAN * br / railCount + 0.18;
-      const rail = new THREE.Mesh(
-        new THREE.BoxGeometry(0.14, 0.22, sl),
-        GUIDE_RAIL_MAT
-      );
-      rail.position.set(Math.cos(a) * br, 0.80, Math.sin(a) * br);
-      rail.rotation.y = rY;
-      orbitalBarriers.add(rail);
-    }
-  });
+  const POST_COUNT = 64;
+  for (let i = 0; i < POST_COUNT; i++) {
+    const a = (i / POST_COUNT) * Math.PI * 2;
+    const postGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.95, 8);
+    const post = new THREE.Mesh(postGeo, STEEL_STRUCTURE_MAT);
+    post.position.set(Math.cos(a) * (RO - 0.15), 0.58, Math.sin(a) * (RO - 0.15));
+    post.castShadow = true;
+    orbitalBarriers.add(post);
+
+    const arcLen = (Math.PI * 2 * (RO - 0.15)) / POST_COUNT;
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.20, arcLen * 1.05),
+      GUIDE_RAIL_MAT
+    );
+    rail.position.set(Math.cos(a) * (RO - 0.15), 0.78, Math.sin(a) * (RO - 0.15));
+    rail.rotation.y = -a;
+    orbitalBarriers.add(rail);
+  }
   root.add(orbitalBarriers);
 
-  // 5. High-Capacity Circulating Roundabout Interchanges ────────────────────────
+  // 5. 4 Cardinal Interchange Roundabouts (North, East, South, West) ───────────
   const roundabouts = new THREE.Group();
-  const icA = [A0 + ASPAN * 0.22, A0 + ASPAN * 0.70];
+  const cardinalAngles = [
+    0,               // East  (+X)
+    Math.PI / 2,     // North (+Z)
+    Math.PI,         // West  (-X)
+    Math.PI * 1.5,   // South (-Z)
+  ];
 
-  icA.forEach(ang => {
-    const cx = Math.cos(ang) * R, cz = Math.sin(ang) * R;
+  cardinalAngles.forEach(ang => {
+    const cx = Math.cos(ang) * R;
+    const cz = Math.sin(ang) * R;
 
     // Multi-lane circulating carriageway ring
-    const cg = new THREE.RingGeometry(13, 25, 48);
+    const cg = new THREE.RingGeometry(11, 23, 48);
     cg.rotateX(-Math.PI / 2);
     const circ = new THREE.Mesh(cg, FRESH_ASPHALT_MAT);
     circ.position.set(cx, 0.14, cz);
     circ.receiveShadow = true;
     roundabouts.add(circ);
 
-    // Beveled stone curb surrounding island
-    const curbG = new THREE.RingGeometry(12.2, 13.0, 48);
+    // Stone curb surrounding central island
+    const curbG = new THREE.RingGeometry(10.2, 11.0, 48);
     curbG.rotateX(-Math.PI / 2);
     const curbM = new THREE.Mesh(curbG, CURB_MAT);
-    curbM.position.set(cx, 0.26, cz);
+    curbM.position.set(cx, 0.24, cz);
     roundabouts.add(curbM);
 
     // Central landscaped island
-    const ig = new THREE.CylinderGeometry(12.2, 12.5, 0.55, 48);
+    const ig = new THREE.CylinderGeometry(10.2, 10.5, 0.45, 48);
     const isl = new THREE.Mesh(ig, new THREE.MeshStandardMaterial({ color: 0x3e7b2a, roughness: 0.85 }));
-    isl.position.set(cx, 0.38, cz);
+    isl.position.set(cx, 0.35, cz);
     isl.castShadow = true;
     roundabouts.add(isl);
 
-    // Illuminated Civic Spire Monument in center of roundabout
-    const spireG = new THREE.CylinderGeometry(0.2, 1.4, 14, 12);
+    // Illuminated Civic Spire Monument
+    const spireG = new THREE.CylinderGeometry(0.25, 1.3, 14, 12);
     const spireM = new THREE.Mesh(spireG, new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2, metalness: 0.8 }));
-    spireM.position.set(cx, 7.5, cz);
+    spireM.position.set(cx, 7.35, cz);
     spireM.castShadow = true;
     roundabouts.add(spireM);
 
-    // Cascading water fountain ring at base of spire
-    const fountainG = new THREE.RingGeometry(2.0, 5.0, 32);
+    // Cascading circular water fountain
+    const fountainG = new THREE.RingGeometry(1.8, 4.5, 32);
     fountainG.rotateX(-Math.PI / 2);
     const fountainM = new THREE.Mesh(fountainG, FOUNTAIN_WATER_MAT);
-    fountainM.position.set(cx, 0.70, cz);
+    fountainM.position.set(cx, 0.62, cz);
     roundabouts.add(fountainM);
 
     // Circulating dashed lane markings
-    for (let i = 0; i < 28; i++) {
-      const a2 = (i / 28) * Math.PI * 2;
-      const mk = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 2.8), WHITE_MARK_MAT);
-      mk.position.set(cx + Math.cos(a2) * 19, 0.16, cz + Math.sin(a2) * 19);
+    for (let i = 0; i < 24; i++) {
+      const a2 = (i / 24) * Math.PI * 2;
+      const mk = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 2.6), WHITE_MARK_MAT);
+      mk.position.set(cx + Math.cos(a2) * 17, 0.16, cz + Math.sin(a2) * 17);
       mk.rotation.y = -Math.atan2(Math.cos(a2), Math.sin(a2));
       roundabouts.add(mk);
     }
 
     // Island ornamental trees
-    for (let i = 0; i < 8; i++) {
-      const ta = (i / 8) * Math.PI * 2;
-      addTree(roundabouts, cx + Math.cos(ta) * 8.5, cz + Math.sin(ta) * 8.5, 0.85);
+    for (let i = 0; i < 6; i++) {
+      const ta = (i / 6) * Math.PI * 2;
+      addTree(roundabouts, cx + Math.cos(ta) * 7.5, cz + Math.sin(ta) * 7.5, 0.85);
     }
   });
   root.add(roundabouts);
 
-  // 6. Radial Feeder Avenues Connecting to City ─────────────────────────────────
+  // 6. 4 Radial Feeder Highways Linking Downtown to Ring Road ─────────────────
   const radialRoads = new THREE.Group();
-  icA.forEach(ang => {
-    const tx = Math.cos(ang) * (RI - SHLDR_W - 12);
-    const tz = Math.sin(ang) * (RI - SHLDR_W - 12);
-    const len = Math.hypot(tx, tz);
-    const rY = -Math.atan2(tz, tx) + Math.PI / 2;
+  cardinalAngles.forEach(ang => {
+    // Length from inner city core to roundabout
+    const startR = 18;
+    const endR   = R - 23;
+    const length = endR - startR; // ~34m
+    const midR   = (startR + endR) / 2;
+    const midX   = Math.cos(ang) * midR;
+    const midZ   = Math.sin(ang) * midR;
+    const rY     = -ang + Math.PI / 2;
 
-    addRoadSeg(radialRoads, 13.0, 0.10, len, tx / 2, 0.04, tz / 2, rY, ROAD_BASE_MAT);
-    addRoadSeg(radialRoads, 11.5, 0.09, len, tx / 2, 0.12, tz / 2, rY, FRESH_ASPHALT_MAT);
+    addRoadSeg(radialRoads, 13.0, 0.08, length, midX, 0.04, midZ, rY, ROAD_BASE_MAT);
+    addRoadSeg(radialRoads, 11.5, 0.08, length, midX, 0.12, midZ, rY, FRESH_ASPHALT_MAT);
 
     // Stone curbs
     [-5.8, 5.8].forEach(kx => {
-      const k = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.24, len), CURB_MAT);
-      k.position.set(tx / 2 + kx * Math.cos(rY), 0.22, tz / 2 + kx * Math.sin(rY));
+      const k = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.22, length), CURB_MAT);
+      k.position.set(midX + kx * Math.cos(rY), 0.20, midZ + kx * Math.sin(rY));
       k.rotation.y = rY;
       radialRoads.add(k);
     });
 
-    // Dashed lane lines
-    for (let i = 0; i < 9; i++) {
-      const t = (i + 0.5) / 9;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 3.8), WHITE_MARK_MAT);
-      m.position.set(tx * t, 0.14, tz * t);
+    // Dashed center divider
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      const t = (i + 0.5) / count;
+      const curR = startR + t * length;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.02, 3.2), WHITE_MARK_MAT);
+      m.position.set(Math.cos(ang) * curR, 0.14, Math.sin(ang) * curR);
       m.rotation.y = rY;
       radialRoads.add(m);
     }
   });
   root.add(radialRoads);
 
-  // 7. Modern Commercial & Corporate Buildings Along Outer Perimeter ────────────
+  // 7. Central Metropolitan Skyscraper Core & Outer Corporate Towers ───────────
   const buildings = new THREE.Group();
-  const ib: number[][] = [
-    [ -10,  18, 16, 16, 28, 0], [-35,  30, 18, 14, 24, 1],
-    [  15,  26, 14, 16, 32, 2], [ -8, -18, 20, 15, 22, 3],
-    [  26,  -8, 16, 16, 26, 4], [ -6, -50, 14, 13, 18, 0],
-    [  34,  45, 16, 14, 24, 1], [-22,  62, 12, 14, 18, 2],
+  // Central Downtown Skyline (inside ring)
+  const downtown: number[][] = [
+    [  0,   0, 18, 18, 38, 0], // Center Iconic Tower
+    [-18,  14, 14, 14, 26, 1], [ 18,  14, 15, 13, 30, 2],
+    [-18, -14, 13, 15, 24, 3], [ 18, -14, 14, 14, 28, 4],
+    [  0,  28, 16, 12, 22, 1], [  0, -28, 15, 13, 20, 2],
+    [-28,   0, 12, 16, 25, 3], [ 28,   0, 13, 15, 27, 0],
   ];
-  ib.forEach(([x, z, w, d, h, ci]) => addBuilding(buildings, x, z, w, d, h, ci));
+  downtown.forEach(([x, z, w, d, h, ci]) => addBuilding(buildings, x, z, w, d, h, ci));
 
-  const ob: number[][] = [
-    [-R - 25, -40, 28, 22, 12, 3], [R + 25, -40, 30, 20, 14, 1],
-    [       0, -R - 22, 32, 20, 15, 0],
-    [-R - 24,  35, 22, 18, 12, 4], [ R + 24,  35, 24, 18, 13, 2],
+  // Outer Peripheral Tech Parks (outside ring)
+  const outerParks: number[][] = [
+    [-98, -45, 22, 18, 14, 1], [ 98, -45, 24, 16, 15, 2],
+    [-98,  45, 20, 18, 16, 3], [ 98,  45, 22, 16, 14, 0],
+    [-45, -98, 20, 20, 15, 4], [ 45, -98, 22, 18, 13, 1],
+    [-45,  98, 18, 22, 14, 2], [ 45,  98, 20, 20, 16, 3],
   ];
-  ob.forEach(([x, z, w, d, h, ci]) => addBuilding(buildings, x, z, w, d, h, ci));
+  outerParks.forEach(([x, z, w, d, h, ci]) => addBuilding(buildings, x, z, w, d, h, ci));
   root.add(buildings);
 
-  // 8. Landscaping Trees ────────────────────────────────────────────────────────
+  // 8. Landscaping Trees ──────────────────────────────────────────────────────
   const trees = new THREE.Group();
-  const tN = 28;
+  // Trees along outer ring perimeter
+  const tN = 36;
   for (let i = 0; i < tN; i++) {
-    const a = A0 + (i / (tN - 1)) * ASPAN;
-    addTree(trees, Math.cos(a) * (RO + 4.2), Math.sin(a) * (RO + 4.2), 1.1 + (i % 3) * 0.15);
-    addTree(trees, Math.cos(a) * (RI - 4.8), Math.sin(a) * (RI - 4.8), 0.95 + (i % 2) * 0.1);
+    const a = (i / tN) * Math.PI * 2;
+    addTree(trees, Math.cos(a) * (RO + 4.5), Math.sin(a) * (RO + 4.5), 1.1 + (i % 3) * 0.15);
+    addTree(trees, Math.cos(a) * (RI - 4.5), Math.sin(a) * (RI - 4.5), 0.95 + (i % 2) * 0.1);
   }
-  [[-50,-12],[-28,-42],[38,-32],[48,20],[-6,56],[-65,46],[58,-12],[-38,65]]
-    .forEach(([tx, tz]) => addTree(trees, tx, tz, 1.1));
   root.add(trees);
 
-  // 9. High-Mast Floodlight Towers ─────────────────────────────────────────────
+  // 9. Modern High-Mast LED Lighting Along Central Median ─────────────────────
   const lights = new THREE.Group();
-  for (let i = 0; i < 18; i++) {
-    const a = A0 + (i / 17) * ASPAN;
-    const lr = RO + 2.0;
-    addModernStreetLight(lights, Math.cos(a) * lr, 0, Math.sin(a) * lr, 9.0, false);
+  const LIGHT_COUNT = 24;
+  for (let i = 0; i < LIGHT_COUNT; i++) {
+    const a = (i / LIGHT_COUNT) * Math.PI * 2;
+    addModernStreetLight(lights, Math.cos(a) * R, 0.22, Math.sin(a) * R, 8.0, true);
   }
+  // High-mast towers at the 4 roundabouts
+  cardinalAngles.forEach(ang => {
+    const hx = Math.cos(ang) * (R + 26);
+    const hz = Math.sin(ang) * (R + 26);
+    addModernStreetLight(lights, hx, 0, hz, 12.0, false);
+  });
   root.add(lights);
 
-  // 10. Overhead Variable Message Signs (VMS) Arching Over Highway ──────────────
+  // 10. Overhead Steel Portal Sign Gantries Across Highway ────────────────────
   const overheadGantry = new THREE.Group();
-  const gantryAngle = A0 + ASPAN * 0.45;
-  const gx = Math.cos(gantryAngle) * R;
-  const gz = Math.sin(gantryAngle) * R;
-  const gantryMesh = addOverheadGantry(
-    overheadGantry,
-    TOTAL_W,
-    1.2,
-    0,
-    'RING ROAD BYPASS • MAX 100 KM/H',
-    'CITY AIRPORT / LOGISTICS HUB'
-  );
-  gantryMesh.position.set(gx, 0, gz);
-  gantryMesh.rotation.y = -Math.atan2(Math.cos(gantryAngle), Math.sin(gantryAngle));
+  // 4 Gantries on approaches to the 4 roundabouts
+  const gantryAngles = [
+    Math.PI * 0.20,
+    Math.PI * 0.70,
+    Math.PI * 1.20,
+    Math.PI * 1.70,
+  ];
+
+  gantryAngles.forEach((ga, idx) => {
+    const names = [
+      ['ORBITAL RING ROAD • EXPRESS', 'EAST ROUNDABOUT / DOWNTOWN'],
+      ['NORTH BELTWAY • SPEED 90', 'NORTH ARTERIAL / AIRPORT'],
+      ['WEST BYPASS • LOGISTICS', 'WEST COMMERCIAL DISTRICT'],
+      ['SOUTH RING • CONGESTION FREE', 'SOUTH EXPRESSWAY / PORT'],
+    ][idx];
+
+    const gx = Math.cos(ga) * R;
+    const gz = Math.sin(ga) * R;
+    const gm = addOverheadGantry(overheadGantry, CARR_W * 2 + MEDIAN_W, 1.2, 0, names[0], names[1]);
+    gm.position.set(gx, 0, gz);
+    gm.rotation.y = -ga + Math.PI / 2;
+  });
   root.add(overheadGantry);
 
-  // 11. Vehicles Navigating Orbital Curves ──────────────────────────────────────
+  // 11. Vehicles Cruising Full 360° Continuous Orbits ─────────────────────────
   const vehicles = ringRoadScenario.vehicles.map(createVehicle);
   vehicles.forEach(v => root.add(v.group));
 
