@@ -69,8 +69,8 @@ export class SceneManager {
   private userLighting: LightingMode | null = null;
   private lastHeroLightingState = false;
 
-  private laneOffsets1 = [-1.0, 1.0];
-  private laneOffsets4 = [-6.75, -3.75, 3.75, 6.75, -5.25, 5.25];
+  private laneOffsets1 = [-1.75, 1.75];
+  private laneOffsets4 = [-6.5, -3.0, 3.0, 6.5, -4.75, 4.75];
 
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -311,23 +311,19 @@ export class SceneManager {
   }
 
   private buildFlyoverDemoSubtree() {
-    this.demoGroup.add(createTerrain());
     const elements = buildFlyover3D();
     this.flyoverElements = elements;
     this.demoGroup.add(elements.group);
-    this.demoGroup.add(createAllBuildings(flyoverScenario.buildings));
-    this.demoGroup.add(createAllTrees(flyoverScenario.trees));
     this.vehicles = elements.vehicles;
-    this.applyFlyoverTimeline(elements, 0);
+    this.applyFlyoverTimeline(elements, this._progress);
   }
 
   private buildRingRoadDemoSubtree() {
-    this.demoGroup.add(createTerrain());
     const elements = buildRingRoad3D();
     this.ringRoadElements = elements;
     this.demoGroup.add(elements.group);
     this.vehicles = elements.vehicles;
-    this.applyRingRoadTimeline(elements, 0);
+    this.applyRingRoadTimeline(elements, this._progress);
   }
 
   public setDemoPlan(plan: DemoPlanType): void {
@@ -725,8 +721,14 @@ export class SceneManager {
   }
 
   private updateFlyoverVehicles(delta: number) {
-    const DECK_ELEVATION = 6.8;
-    const HALF_LEN = 110;
+    const DECK_SURFACE_Y = 7.42;
+    const GROUND_SURFACE_Y = 0.16;
+    const RAMP_START = 45.0;
+    const RAMP_END = 100.0;
+    const RAMP_LEN = RAMP_END - RAMP_START; // 55.0
+    const RAMP_SLOPE = (DECK_SURFACE_Y - GROUND_SURFACE_Y) / RAMP_LEN; // ~0.132
+    const RAMP_PITCH = Math.atan(RAMP_SLOPE);
+    const HALF_LEN = 130;
 
     this.vehicles.forEach(v => {
       const visible = this._progress < 0.18 || this._progress >= 0.84;
@@ -734,14 +736,15 @@ export class SceneManager {
       if (!visible) return;
 
       if (v.config.laneIndex >= 4) {
-        // Surface crossroad traffic along X axis
-        const speed = v.config.speed * delta * 60;
+        // Surface crossroad traffic along X axis (strictly at ground road surface Y=0.16)
+        const speed = v.config.speed * delta * 55;
         const dir = v.config.direction;
         let curX = v.group.position.x + dir * speed;
-        if (curX > 60) curX = -60;
-        if (curX < -60) curX = 60;
-        v.group.position.set(curX, 0.15, v.config.laneIndex === 4 ? -4 : 4);
-        v.group.rotation.y = dir === 1 ? Math.PI / 2 : -Math.PI / 2;
+        if (curX > 85) curX = -85;
+        if (curX < -85) curX = 85;
+        const crossZ = v.config.laneIndex === 4 ? -3.8 : 3.8;
+        v.group.position.set(curX, GROUND_SURFACE_Y, crossZ);
+        v.group.rotation.set(0, dir === 1 ? Math.PI / 2 : -Math.PI / 2, 0);
       } else {
         // Elevated express flyover traffic along Z axis
         const speed = v.config.speed * delta * 60;
@@ -750,73 +753,86 @@ export class SceneManager {
         if (v.currentZ > HALF_LEN) v.currentZ = -HALF_LEN;
         if (v.currentZ < -HALF_LEN) v.currentZ = HALF_LEN;
 
-        let y = 0.2;
-        let pitch = 0;
         const z = v.currentZ;
+        let y = GROUND_SURFACE_Y;
+        let pitch = 0;
 
-        if (z >= -36 && z <= 36) {
-          y = DECK_ELEVATION + 0.35;
+        if (z >= -RAMP_START && z <= RAMP_START) {
+          // On elevated viaduct deck (flush with asphalt top)
+          y = DECK_SURFACE_Y;
           pitch = 0;
-        } else if (z > -90 && z < -36) {
-          const t = (z - (-90)) / 54;
-          y = 0.2 + t * DECK_ELEVATION;
-          pitch = Math.atan2(DECK_ELEVATION, 54) * (dir === 1 ? -1 : 1);
-        } else if (z > 36 && z < 90) {
-          const t = (z - 36) / 54;
-          y = DECK_ELEVATION + 0.35 - t * DECK_ELEVATION;
-          pitch = Math.atan2(DECK_ELEVATION, 54) * (dir === 1 ? 1 : -1);
+        } else if (z > -RAMP_END && z < -RAMP_START) {
+          // On south approach ramp (slopes upward toward +Z)
+          const t = (z - (-RAMP_END)) / RAMP_LEN; // 0 at -100, 1 at -45
+          y = GROUND_SURFACE_Y + t * (DECK_SURFACE_Y - GROUND_SURFACE_Y);
+          pitch = dir === 1 ? -RAMP_PITCH : RAMP_PITCH;
+        } else if (z > RAMP_START && z < RAMP_END) {
+          // On north approach ramp (slopes downward toward +Z)
+          const t = (z - RAMP_START) / RAMP_LEN; // 0 at 45, 1 at 100
+          y = DECK_SURFACE_Y - t * (DECK_SURFACE_Y - GROUND_SURFACE_Y);
+          pitch = dir === 1 ? RAMP_PITCH : -RAMP_PITCH;
+        } else {
+          // Ground approaches
+          y = GROUND_SURFACE_Y;
+          pitch = 0;
         }
 
-        const laneXOffsets = [-3.8, -1.8, 1.8, 3.8];
+        const laneXOffsets = [-5.2, -1.8, 1.8, 5.2];
         const laneX = laneXOffsets[Math.min(v.config.laneIndex, 3)];
 
         v.group.position.set(laneX, y, z);
-        v.group.rotation.y = dir === 1 ? 0 : Math.PI;
-        v.group.rotation.x = pitch;
+        v.group.rotation.set(pitch, dir === 1 ? 0 : Math.PI, 0);
       }
     });
   }
 
   private updateRingRoadVehicles(delta: number) {
-    const RADIUS = 68.0;
-    const START_ANGLE = -Math.PI * 0.85;
-    const END_ANGLE = Math.PI * 0.25;
-    const ARC_SPAN = END_ANGLE - START_ANGLE;
+    // Exact radii matching the 4 lanes on the 3D roadbed (R=74, CarrW=7.5, MedW=2.5)
+    // Outer lanes: 80.85 (slow), 77.10 (fast). Inner lanes: 70.90 (fast), 67.15 (slow)
+    const RING_LANE_RADII = [80.85, 77.10, 70.90, 67.15];
+    const A0 = -Math.PI * 0.95;
+    const A1 = Math.PI * 0.35;
+    const ASPAN = A1 - A0;
+    const ROAD_SURFACE_Y = 0.21; // Exactly on top of the 3D asphalt roadbed
 
     this.vehicles.forEach((v, idx) => {
       const visible = this._progress < 0.18 || this._progress >= 0.82;
       v.group.visible = visible;
       if (!visible) return;
 
-      if (v.config.laneIndex === 4) {
-        // Feeder road traffic heading towards roundabout
-        const speed = v.config.speed * delta * 45;
-        v.currentZ += speed;
-        if (v.currentZ > 45) v.currentZ = -10;
-        v.group.position.set(-v.currentZ * 0.6, 0.15, -v.currentZ * 0.8);
-        v.group.rotation.y = Math.PI * 0.6;
-      } else {
-        const laneOffsets = [-4.5, -1.5, 1.5, 4.5];
-        const laneR = RADIUS + laneOffsets[Math.min(v.config.laneIndex, 3)];
-        const dir = v.config.direction;
-        const speed = v.config.speed * delta * 0.75;
+      const anyV = v as unknown as { currentAngle?: number; radialDist?: number };
 
-        const anyV = v as unknown as { currentAngle?: number };
+      if (v.config.laneIndex >= 4) {
+        // Feeder avenue traffic joining via radial entrance towards roundabout
+        const ang = A0 + ASPAN * 0.22;
+        const rY = -Math.atan2(Math.sin(ang), Math.cos(ang)) + Math.PI / 2;
+        anyV.radialDist = (anyV.radialDist || 16) + v.config.speed * delta * 35;
+        if (anyV.radialDist > 62) anyV.radialDist = 16;
+        const fx = Math.cos(ang) * anyV.radialDist;
+        const fz = Math.sin(ang) * anyV.radialDist;
+        v.group.position.set(fx, ROAD_SURFACE_Y, fz);
+        v.group.rotation.set(0, rY, 0);
+      } else {
+        const laneR = RING_LANE_RADII[Math.min(v.config.laneIndex, 3)];
+        const dir = v.config.direction;
+        const angularSpeed = (v.config.speed * delta * 30) / laneR;
+
         if (anyV.currentAngle === undefined) {
-          anyV.currentAngle = START_ANGLE + ((idx * 0.22) % ARC_SPAN);
+          anyV.currentAngle = A0 + ((idx * 0.28) % ASPAN);
         }
 
-        anyV.currentAngle += (dir * speed);
-        if (anyV.currentAngle > END_ANGLE) anyV.currentAngle = START_ANGLE;
-        if (anyV.currentAngle < START_ANGLE) anyV.currentAngle = END_ANGLE;
+        anyV.currentAngle += dir * angularSpeed;
+        if (anyV.currentAngle > A1) anyV.currentAngle = A0;
+        if (anyV.currentAngle < A0) anyV.currentAngle = A1;
 
         const a = anyV.currentAngle;
         const x = Math.cos(a) * laneR;
         const z = Math.sin(a) * laneR;
 
-        v.group.position.set(x, 0.2, z);
-        const tangentAngle = dir === 1 ? -a : -a + Math.PI;
-        v.group.rotation.y = tangentAngle;
+        v.group.position.set(x, ROAD_SURFACE_Y, z);
+        // Tangent heading along circular arc
+        const heading = dir === 1 ? -a : -a + Math.PI;
+        v.group.rotation.set(0, heading, 0);
       }
     });
   }

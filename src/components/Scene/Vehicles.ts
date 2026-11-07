@@ -752,7 +752,8 @@ export function updateVehicles(
     if (inst.currentZ > half + 15)  inst.currentZ = -half - 15;
     if (inst.currentZ < -half - 15) inst.currentZ =  half + 15;
 
-    inst.group.position.set(v.xOff, 0, inst.currentZ);
+    // Sit flush directly on asphalt road wearing course surface (Y = 0.16)
+    inst.group.position.set(v.xOff, 0.16, inst.currentZ);
 
     // Subtle pitch roll on acceleration / braking
     inst.group.rotation.x = braking ? -0.015 : 0;

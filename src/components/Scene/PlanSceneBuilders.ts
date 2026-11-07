@@ -351,6 +351,7 @@ export function buildFlyover3D(): FlyoverSceneElements {
     GRASS_MAT
   );
   gnd.rotation.x = -Math.PI / 2;
+  gnd.position.y = -0.01; // Flush ground foundation below road layers
   gnd.receiveShadow = true;
   terrain.add(gnd);
 
@@ -651,7 +652,8 @@ function buildHighFidelityRamp(
   width: number, length: number, deckH: number, cZ: number, ascending: boolean
 ): THREE.Group {
   const g = new THREE.Group();
-  const slope = Math.atan2(deckH, length) * (ascending ? 1 : -1);
+  // Negative rotation around X pitches upward as Z increases (for ascending ramp to deck)
+  const slope = Math.atan2(deckH, length) * (ascending ? -1 : 1);
   const halfH = deckH / 2;
 
   // Inclined concrete ramp slab
@@ -788,6 +790,7 @@ export function buildRingRoad3D(): RingRoadSceneElements {
     GRASS_MAT
   );
   gnd.rotation.x = -Math.PI / 2;
+  gnd.position.y = -0.01; // Sits strictly below road levels
   gnd.receiveShadow = true;
   ter.add(gnd);
 
@@ -797,7 +800,7 @@ export function buildRingRoad3D(): RingRoadSceneElements {
     new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 })
   );
   innerUrbanCore.rotation.x = -Math.PI / 2;
-  innerUrbanCore.position.y = 0.01;
+  innerUrbanCore.position.y = 0.001;
   innerUrbanCore.receiveShadow = true;
   ter.add(innerUrbanCore);
   root.add(ter);

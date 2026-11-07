@@ -1,42 +1,34 @@
 import * as THREE from 'three';
 
-// ─── Ground terrain ───────────────────────────────────────────────────────────
+// ─── Ground terrain (Flat, flush, guaranteed zero road penetration) ───────────
 export function createTerrain(): THREE.Group {
   const group = new THREE.Group();
 
-  // Main ground plane
-  const groundGeo = new THREE.PlaneGeometry(300, 400, 40, 60);
-  const groundMat = new THREE.MeshLambertMaterial({ color: 0x7a8f5a });
-
-  // Subtle elevation noise
-  const pos = groundGeo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const z = pos.getY(i); // plane Y = world Z before rotation
-    // avoid bumps near road corridor
-    const distFromRoad = Math.abs(x);
-    if (distFromRoad > 8) {
-      const bump = (Math.sin(x * 0.3) * 0.3 + Math.cos(z * 0.2) * 0.4) * (distFromRoad / 80);
-      pos.setZ(i, bump);
-    }
-  }
-  groundGeo.computeVertexNormals();
+  // Main ground plane (completely flat at Y = 0 to prevent any grass clipping through roads)
+  const groundGeo = new THREE.PlaneGeometry(400, 400);
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x4a8238,
+    roughness: 0.88,
+    metalness: 0.02,
+  });
 
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.005; // Slightly below Y=0 so roads at Y>=0.05 are always clean and unobscured
   ground.receiveShadow = true;
   group.add(ground);
 
-  // Road corridor dirt strip (slightly darker)
-  const corridorGeo = new THREE.PlaneGeometry(20, 400);
-  const corridorMat = new THREE.MeshLambertMaterial({ color: 0x6a7850 });
+  // Subtle soil shoulder strip flanking road corridor
+  const corridorGeo = new THREE.PlaneGeometry(28, 400);
+  const corridorMat = new THREE.MeshStandardMaterial({
+    color: 0x5a6845,
+    roughness: 0.90,
+  });
   const corridor = new THREE.Mesh(corridorGeo, corridorMat);
   corridor.rotation.x = -Math.PI / 2;
   corridor.position.y = 0.001;
+  corridor.receiveShadow = true;
   group.add(corridor);
-
-  // Grass patches
-  addGrassPatches(group);
 
   return group;
 }
