@@ -8,6 +8,26 @@ import {
 
 export type PlayerVehicleType = 'car' | 'bike' | 'suv' | 'bus' | 'truck';
 
+export interface TyreFootprint {
+  tyreCount: number;
+  axleCount: number;
+  tyreWidthMm: number;
+  contactPatchAreaM2: number;
+  wheelbaseM: number;
+  dualRear: boolean;
+  tyrePattern: string;
+}
+
+export interface TyreSensorAnalysis {
+  detectedType: PlayerVehicleType;
+  tyreCount: number;
+  axleCount: number;
+  tyreWidthMm: number;
+  contactPatchM2: number;
+  tyrePattern: string;
+  classificationReason: string;
+}
+
 export interface SensorDetectionLog {
   id: number;
   time: string;
@@ -21,6 +41,12 @@ export interface SensorDetectionLog {
   deltaROverR: number;
   approach: string;
   source: 'AI Traffic' | 'Player Vehicle';
+  tyreCount: number;
+  axleCount: number;
+  tyreWidthMm: number;
+  contactPatchM2: number;
+  tyrePattern: string;
+  classificationBasis: string;
 }
 
 interface VehicleProfile {
@@ -36,6 +62,7 @@ interface VehicleProfile {
   steerResponsiveness: number;
   colorHex: number;
   icon: string;
+  tyre: TyreFootprint;
 }
 
 const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
@@ -52,6 +79,15 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     steerResponsiveness: 2.6,
     colorHex: 0x0284c7,
     icon: '🚗',
+    tyre: {
+      tyreCount: 4,
+      axleCount: 2,
+      tyreWidthMm: 205,
+      contactPatchAreaM2: 0.068,
+      wheelbaseM: 2.70,
+      dualRear: false,
+      tyrePattern: '4x Standard Radial (205mm)',
+    },
   },
   bike: {
     type: 'bike',
@@ -66,6 +102,15 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     steerResponsiveness: 3.5,
     colorHex: 0xf59e0b,
     icon: '🏍️',
+    tyre: {
+      tyreCount: 2,
+      axleCount: 2,
+      tyreWidthMm: 120,
+      contactPatchAreaM2: 0.018,
+      wheelbaseM: 1.45,
+      dualRear: false,
+      tyrePattern: '2x Narrow Inline (120mm)',
+    },
   },
   suv: {
     type: 'suv',
@@ -80,6 +125,15 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     steerResponsiveness: 2.3,
     colorHex: 0xd97706,
     icon: '🚙',
+    tyre: {
+      tyreCount: 4,
+      axleCount: 2,
+      tyreWidthMm: 265,
+      contactPatchAreaM2: 0.095,
+      wheelbaseM: 2.85,
+      dualRear: false,
+      tyrePattern: '4x All-Terrain Wide (265mm)',
+    },
   },
   bus: {
     type: 'bus',
@@ -94,6 +148,15 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     steerResponsiveness: 1.6,
     colorHex: 0x059669,
     icon: '🚌',
+    tyre: {
+      tyreCount: 6,
+      axleCount: 2,
+      tyreWidthMm: 295,
+      contactPatchAreaM2: 0.145,
+      wheelbaseM: 6.20,
+      dualRear: true,
+      tyrePattern: '6x Heavy Commercial (Dual Rear 295mm)',
+    },
   },
   truck: {
     type: 'truck',
@@ -108,8 +171,55 @@ const VEHICLE_PROFILES: Record<PlayerVehicleType, VehicleProfile> = {
     steerResponsiveness: 1.8,
     colorHex: 0x7c3aed,
     icon: '🚚',
+    tyre: {
+      tyreCount: 6,
+      axleCount: 2,
+      tyreWidthMm: 285,
+      contactPatchAreaM2: 0.130,
+      wheelbaseM: 4.80,
+      dualRear: true,
+      tyrePattern: '6x Medium Freight (Dual Rear 285mm)',
+    },
   },
 };
+
+export function analyzeTyreDetection(
+  vehicleType: PlayerVehicleType,
+  measuredPressureMpa: number
+): TyreSensorAnalysis {
+  const t = VEHICLE_PROFILES[vehicleType].tyre;
+  let detectedType: PlayerVehicleType = 'car';
+  let classificationReason = '';
+
+  if (t.tyreCount === 2 || t.tyreWidthMm <= 140) {
+    detectedType = 'bike';
+    classificationReason = `2 Narrow Tyres (${t.tyreWidthMm}mm, patch ${t.contactPatchAreaM2}m²) • Single-Track Footprint`;
+  } else if (t.dualRear || t.tyreCount >= 6) {
+    if (t.wheelbaseM > 5.5 || measuredPressureMpa > 4.2) {
+      detectedType = 'bus';
+      classificationReason = `6 Tyres (Dual-Wheel Rear Axle, ${t.tyreWidthMm}mm) • 6.2m Wheelbase • High-Density Transit Footprint`;
+    } else {
+      detectedType = 'truck';
+      classificationReason = `6 Commercial Tyres (Dual Rear Axle, ${t.tyreWidthMm}mm) • 4.8m Wheelbase • Heavy Freight Footprint`;
+    }
+  } else if (t.tyreWidthMm >= 250 || measuredPressureMpa > 1.9) {
+    detectedType = 'suv';
+    classificationReason = `4 Wide Radial Tyres (${t.tyreWidthMm}mm, patch ${t.contactPatchAreaM2}m²) • Wide-Track Multi-Utility Footprint`;
+  } else {
+    detectedType = 'car';
+    classificationReason = `4 Standard Radial Tyres (${t.tyreWidthMm}mm, patch ${t.contactPatchAreaM2}m²) • Dual-Axle Passenger Footprint`;
+  }
+
+  return {
+    detectedType,
+    tyreCount: t.tyreCount,
+    axleCount: t.axleCount,
+    tyreWidthMm: t.tyreWidthMm,
+    contactPatchM2: t.contactPatchAreaM2,
+    tyrePattern: t.tyrePattern,
+    classificationReason,
+  };
+}
 
 interface SensorPlateData {
   mesh: THREE.Mesh;
@@ -204,8 +314,10 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
   const [trafficSpeedLimit, setTrafficSpeedLimit] = useState<number>(30); // 30 km/h default (comfortable city speed)
   const trafficSpeedLimitRef = useRef<number>(30);
 
-  const [playerSpeedGoverned, setPlayerSpeedGoverned] = useState<boolean>(false);
-  const playerSpeedGovernedRef = useRef<boolean>(false);
+  const [playerSpeedGoverned, setPlayerSpeedGoverned] = useState<boolean>(true);
+  const playerSpeedGovernedRef = useRef<boolean>(true);
+
+  const [detectedTyreInfo, setDetectedTyreInfo] = useState<TyreSensorAnalysis | null>(null);
 
   const [sensorLogs, setSensorLogs] = useState<SensorDetectionLog[]>([]);
   const sensorLogsRef = useRef<SensorDetectionLog[]>([]);
@@ -265,13 +377,19 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       'Timestamp (Local)',
       'Timestamp (ISO)',
       'Vehicle Name',
-      'Vehicle Type',
+      'Classified Type',
       'Class Tag',
       'Source',
       'Speed (km/h)',
       'Axle Weight (Tons)',
       'Sensor Pressure (MPa)',
       'Resistance Shift Delta R/R (%)',
+      'Tyres Detected',
+      'Axles Count',
+      'Tyre Width (mm)',
+      'Contact Patch (m2)',
+      'Tyre Footprint Pattern',
+      'Tyre Classification Basis',
       'Sensor Location / Approach',
     ];
 
@@ -287,6 +405,12 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       l.weightTons.toFixed(2),
       l.pressureMpa.toFixed(2),
       `"${l.deltaROverR.toFixed(1)}%"`,
+      l.tyreCount,
+      l.axleCount,
+      l.tyreWidthMm,
+      l.contactPatchM2,
+      `"${l.tyrePattern}"`,
+      `"${l.classificationBasis}"`,
       `"${l.approach}"`,
     ]);
 
@@ -1027,12 +1151,16 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         w.rotation.y = steeringAngle;
       });
 
-      // Acceleration / Braking
+      // Acceleration / Braking strictly locked to the adjusted speed
       let isBraking = false;
-      let maxSpeedUnits = profile.maxSpeedKmh / 3.6;
-      if (playerSpeedGovernedRef.current) {
-        maxSpeedUnits = Math.min(maxSpeedUnits, trafficSpeedLimitRef.current / 3.6);
+      const targetSpeedUnits = trafficSpeedLimitRef.current / 3.6;
+      let maxSpeedUnits = targetSpeedUnits;
+
+      // Auto-brake / engine-brake smoothly if current vehicle speed is above the set limit
+      if (carSpeed > maxSpeedUnits) {
+        carSpeed = Math.max(carSpeed - 14.0 * dt, maxSpeedUnits);
       }
+
       if (isUp) {
         if (carSpeed < 0) {
           carSpeed += profile.brakeDecel * dt;
@@ -1346,11 +1474,14 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
                 const dr = parseFloat((-(press * 11.2)).toFixed(1));
                 const now = new Date();
 
+                // Piezoresistive Tyre Footprint Detection & Classification
+                const tyreAnalysis = analyzeTyreDetection(ai.type, press);
+
                 const logEntry: SensorDetectionLog = {
                   id: logCounterRef.current++,
                   time: now.toLocaleTimeString(),
                   isoTime: now.toISOString(),
-                  vehicleType: ai.type,
+                  vehicleType: tyreAnalysis.detectedType,
                   vehicleName: ai.profile.name,
                   classTag: ai.profile.classTag,
                   speedKmh: aiKmh,
@@ -1359,11 +1490,17 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
                   deltaROverR: dr,
                   approach: `${j.id} (${sp.approachName})`,
                   source: 'AI Traffic',
+                  tyreCount: tyreAnalysis.tyreCount,
+                  axleCount: tyreAnalysis.axleCount,
+                  tyreWidthMm: tyreAnalysis.tyreWidthMm,
+                  contactPatchM2: tyreAnalysis.contactPatchM2,
+                  tyrePattern: tyreAnalysis.tyrePattern,
+                  classificationBasis: tyreAnalysis.classificationReason,
                 };
 
                 sensorLogsRef.current.unshift(logEntry);
                 if (sensorLogsRef.current.length > 500) sensorLogsRef.current.pop();
-                vehicleCountsRef.current[ai.type] += 1;
+                vehicleCountsRef.current[tyreAnalysis.detectedType] += 1;
                 vehicleCountsRef.current.total += 1;
                 hasNewSensorLog = true;
               }
@@ -1417,8 +1554,12 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             detectedP = profile.basePressureMpa * dynamicInertia;
             detectedDR = -(detectedP * 11.2);
 
-            activeDetectedName = `${profile.icon} ${profile.name}`;
-            activeClass = profile.classTag;
+            // Piezoresistive Tyre Footprint Detection & Classification for Player
+            const tyreAnalysis = analyzeTyreDetection(currentType, detectedP);
+            setDetectedTyreInfo(tyreAnalysis);
+
+            activeDetectedName = `${profile.icon} ${profile.name} (${tyreAnalysis.tyreCount} Tyres)`;
+            activeClass = `${profile.classTag} • ${tyreAnalysis.tyrePattern}`;
             activeW = profile.weightTons;
             currentZone = `${sp.approachName} [PIEZORESISTIVE ACTIVE]`;
 
@@ -1436,7 +1577,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
                 id: logCounterRef.current++,
                 time: now.toLocaleTimeString(),
                 isoTime: now.toISOString(),
-                vehicleType: currentType,
+                vehicleType: tyreAnalysis.detectedType,
                 vehicleName: profile.name,
                 classTag: profile.classTag,
                 speedKmh: kmh,
@@ -1445,11 +1586,17 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
                 deltaROverR: parseFloat(detectedDR.toFixed(1)),
                 approach: `${j.id} (${sp.approachName})`,
                 source: 'Player Vehicle',
+                tyreCount: tyreAnalysis.tyreCount,
+                axleCount: tyreAnalysis.axleCount,
+                tyreWidthMm: tyreAnalysis.tyreWidthMm,
+                contactPatchM2: tyreAnalysis.contactPatchM2,
+                tyrePattern: tyreAnalysis.tyrePattern,
+                classificationBasis: tyreAnalysis.classificationReason,
               };
 
               sensorLogsRef.current.unshift(logEntry);
               if (sensorLogsRef.current.length > 500) sensorLogsRef.current.pop();
-              vehicleCountsRef.current[currentType] += 1;
+              vehicleCountsRef.current[tyreAnalysis.detectedType] += 1;
               vehicleCountsRef.current.total += 1;
               hasNewSensorLog = true;
             }
@@ -1619,68 +1766,121 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       {/* Crash Banner Notification */}
       {crashBanner && <div className="sim-crash-banner">{crashBanner}</div>}
 
-      {/* Unified Slim Navigation Header */}
+      {/* ── UNIFIED SMART CITY COMMAND DECK (CLEAN SINGLE-TIER HUD) ── */}
       <header className="simulation-hud-bar">
-        {/* Left: Home & City Tag */}
-        <div className="hud-group-left">
+        {/* Left Section: Home, Flow Control & Speed Governor */}
+        <div className="hud-section hud-section--left">
           <button className="hud-btn-home" onClick={onReturnToHome} title="Return to Front Page">
             ← Home
           </button>
-          <div className="hud-badge-tag">
-            <span className="hud-live-dot" />
-            <span className="hud-title-text">METROPOLITAN MINI CITY (5x5 GRID)</span>
+
+          <div className="hud-divider" />
+
+          <button
+            className={`hud-flow-btn ${trafficPaused ? 'hud-flow-btn--resume' : 'hud-flow-btn--pause'}`}
+            onClick={handleToggleTraffic}
+            title={trafficPaused ? 'Resume AI Traffic Movement [P]' : 'Pause AI Traffic Movement [P]'}
+          >
+            <span>{trafficPaused ? '▶ Resume' : '⏸ Pause'}</span>
+          </button>
+
+          <div className="hud-speed-governor" title="Speed limit governor (regulates both AI fleet and your vehicle)">
+            <span className="gov-icon">⚡</span>
+            <span className="gov-val">{trafficSpeedLimit} <small>km/h</small></span>
+            <input
+              type="range"
+              min={10}
+              max={70}
+              step={5}
+              value={trafficSpeedLimit}
+              onChange={(e) => handleSpeedLimitChange(Number(e.target.value))}
+              className="hud-slider"
+              title="Adjust speed limit"
+            />
+            <div className="gov-mini-presets">
+              {[20, 35, 55].map((preset) => (
+                <button
+                  key={preset}
+                  className={`gov-mini-chip ${trafficSpeedLimit === preset ? 'gov-mini-chip--active' : ''}`}
+                  onClick={() => handleSpeedLimitChange(preset)}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Center: Compact Vehicle Switcher Chips */}
-        <div className="hud-group-center">
-          {(['car', 'bike', 'suv', 'bus', 'truck'] as PlayerVehicleType[]).map((vKey) => {
-            const p = VEHICLE_PROFILES[vKey];
-            const isActive = selectedVehicleType === vKey;
-            return (
-              <button
-                key={vKey}
-                className={`hud-vehicle-chip ${isActive ? 'hud-vehicle-chip--active' : ''}`}
-                onClick={() => handleSelectVehicle(vKey)}
-                title={`Switch to ${p.name} (${p.weightTons}T)`}
-              >
-                <span className="chip-icon">{p.icon}</span>
-                <span className="chip-name">{vKey.toUpperCase()}</span>
-              </button>
-            );
-          })}
+        {/* Center Section: Segmented Vehicle Switcher */}
+        <div className="hud-section hud-section--center">
+          <div className="hud-vehicle-picker">
+            {(['car', 'bike', 'suv', 'bus', 'truck'] as PlayerVehicleType[]).map((vKey) => {
+              const p = VEHICLE_PROFILES[vKey];
+              const isActive = selectedVehicleType === vKey;
+              return (
+                <button
+                  key={vKey}
+                  className={`hud-v-pill ${isActive ? 'hud-v-pill--active' : ''}`}
+                  onClick={() => handleSelectVehicle(vKey)}
+                  title={`${p.name} • ${p.weightTons}T • ${p.tyre.tyreCount} Tyres (${p.tyre.tyrePattern})`}
+                >
+                  <span className="pill-icon">{p.icon}</span>
+                  <span className="pill-name">{vKey.toUpperCase()}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Right: Grid Stats, Camera, & Reset */}
-        <div className="hud-group-right">
-          <div className="hud-metric-pill">
-            <span className="pill-val">{junctionsClearedCount}/25</span>
-            <span className="pill-sub">CLEARED</span>
-          </div>
-          <div className="hud-metric-pill hud-metric-pill--next">
-            <span className="pill-val">{nextJunctionName}</span>
-            <span className="pill-sub">{nextJunctionDist}m</span>
-          </div>
+        {/* Right Section: Telemetry, Missions, Camera & Reset */}
+        <div className="hud-section hud-section--right">
+          <button
+            className={`hud-telemetry-btn ${showFleetDrawer ? 'hud-telemetry-btn--active' : ''}`}
+            onClick={() => setShowFleetDrawer(!showFleetDrawer)}
+            title="Toggle Piezoresistive Tyre Footprint Audit Log & Fleet Breakdown"
+          >
+            <span className="telemetry-dot" />
+            <span>📊 {vehicleCounts.total} Detections</span>
+            <span className="telemetry-arrow">{showFleetDrawer ? '▲' : '▾'}</span>
+          </button>
 
-          <div className="hud-cam-toggles">
+          <button
+            className="hud-action-btn hud-action-btn--csv"
+            onClick={handleDownloadCSV}
+            title="Download full tyre sensor CSV log"
+          >
+            📥 CSV
+          </button>
+
+          <button
+            className={`hud-action-btn hud-action-btn--missions ${showMissions ? 'hud-action-btn--active' : ''}`}
+            onClick={() => setShowMissions(!showMissions)}
+            title="Toggle Mission Objectives"
+          >
+            🎯 Missions ({missions.filter((m) => m.completed).length}/5)
+          </button>
+
+          <div className="hud-divider" />
+
+          <div className="hud-cam-switch">
             <button
-              className={`hud-cam-btn ${cameraMode === 'chase' ? 'hud-cam-btn--active' : ''}`}
+              className={`hud-cam-pill ${cameraMode === 'chase' ? 'hud-cam-pill--active' : ''}`}
               onClick={() => handleSelectCamera('chase')}
               title="Chase Cam [C]"
             >
               Chase
             </button>
             <button
-              className={`hud-cam-btn ${cameraMode === 'hood' ? 'hud-cam-btn--active' : ''}`}
+              className={`hud-cam-pill ${cameraMode === 'hood' ? 'hud-cam-pill--active' : ''}`}
               onClick={() => handleSelectCamera('hood')}
               title="POV Cam"
             >
               POV
             </button>
             <button
-              className={`hud-cam-btn ${cameraMode === 'top' ? 'hud-cam-btn--active' : ''}`}
+              className={`hud-cam-pill ${cameraMode === 'top' ? 'hud-cam-pill--active' : ''}`}
               onClick={() => handleSelectCamera('top')}
-              title="Tactical Drone Cam"
+              title="Drone Cam"
             >
               Drone
             </button>
@@ -1692,118 +1892,13 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         </div>
       </header>
 
-      {/* Traffic Control & Fleet Sensor Telemetry Toolbar */}
-      <div className="simulation-traffic-bar">
-        {/* Stop / Resume Button */}
-        <button
-          className={`traffic-btn ${trafficPaused ? 'traffic-btn--resume' : 'traffic-btn--stop'}`}
-          onClick={handleToggleTraffic}
-          title={trafficPaused ? 'Resume AI Traffic Movement [P]' : 'Freeze / Stop all AI Traffic [P]'}
-        >
-          {trafficPaused ? '▶️ RESUME TRAFFIC' : '🛑 STOP VEHICLES'}
-        </button>
-
-        {/* Speed Limit Slider & Presets */}
-        <div className="traffic-speed-control">
-          <span className="speed-ctrl-label">
-            SPEED LIMIT: <strong>{trafficSpeedLimit} km/h</strong>
-          </span>
-          <input
-            type="range"
-            min={10}
-            max={70}
-            step={5}
-            value={trafficSpeedLimit}
-            onChange={(e) => handleSpeedLimitChange(Number(e.target.value))}
-            className="traffic-speed-slider"
-            title="Adjust city speed limit for all AI traffic vehicles"
-          />
-          <div className="speed-preset-chips">
-            <button
-              className={`preset-chip ${trafficSpeedLimit === 20 ? 'preset-chip--active' : ''}`}
-              onClick={() => handleSpeedLimitChange(20)}
-            >
-              20 Slow
-            </button>
-            <button
-              className={`preset-chip ${trafficSpeedLimit === 35 ? 'preset-chip--active' : ''}`}
-              onClick={() => handleSpeedLimitChange(35)}
-            >
-              35 Normal
-            </button>
-            <button
-              className={`preset-chip ${trafficSpeedLimit === 55 ? 'preset-chip--active' : ''}`}
-              onClick={() => handleSpeedLimitChange(55)}
-            >
-              55 Fast
-            </button>
-          </div>
-        </div>
-
-        {/* Speed Limiter toggle for Player */}
-        <label className="player-governor-toggle" title="Cap your vehicle top speed to the active traffic speed limit">
-          <input
-            type="checkbox"
-            checked={playerSpeedGoverned}
-            onChange={handleTogglePlayerGovernor}
-          />
-          <span>Cap My Speed</span>
-        </label>
-
-        {/* Real-Time Vehicle Sensor Count Tally */}
-        <div className="fleet-counts-group">
-          <div className="fleet-count-chip total" title="Total vehicles recorded crossing piezoresistive plates">
-            <span className="count-label">TOTAL PASSES</span>
-            <span className="count-val">{vehicleCounts.total}</span>
-          </div>
-          <div className="fleet-count-chip car" title="Sedan (Passenger Cars) detected">
-            <span className="count-label">🚗 SEDAN</span>
-            <span className="count-val">{vehicleCounts.car}</span>
-          </div>
-          <div className="fleet-count-chip suv" title="SUVs detected">
-            <span className="count-label">🚙 SUV</span>
-            <span className="count-val">{vehicleCounts.suv}</span>
-          </div>
-          <div className="fleet-count-chip bike" title="Bikes detected">
-            <span className="count-label">🏍️ BIKE</span>
-            <span className="count-val">{vehicleCounts.bike}</span>
-          </div>
-          <div className="fleet-count-chip bus" title="Buses detected">
-            <span className="count-label">🚌 BUS</span>
-            <span className="count-val">{vehicleCounts.bus}</span>
-          </div>
-          <div className="fleet-count-chip truck" title="Trucks detected">
-            <span className="count-label">🚚 TRUCK</span>
-            <span className="count-val">{vehicleCounts.truck}</span>
-          </div>
-        </div>
-
-        {/* CSV Download & Drawer Toggle */}
-        <div className="fleet-actions-group">
-          <button
-            className="fleet-btn-csv"
-            onClick={handleDownloadCSV}
-            title="Download recorded piezoresistive sensor detections as a CSV spreadsheet"
-          >
-            📥 CSV ({vehicleCounts.total})
-          </button>
-          <button
-            className={`fleet-btn-drawer ${showFleetDrawer ? 'fleet-btn-drawer--active' : ''}`}
-            onClick={() => setShowFleetDrawer(!showFleetDrawer)}
-            title="Toggle live recorded vehicle telemetry audit table"
-          >
-            {showFleetDrawer ? 'Hide Log ▲' : 'View Log ▼'}
-          </button>
-        </div>
-      </div>
-
       {/* Expandable Fleet Sensor Audit Log Drawer */}
       {showFleetDrawer && (
         <div className="simulation-fleet-drawer">
           <div className="fleet-drawer-header">
             <div className="drawer-title-row">
-              <span className="drawer-icon">📊</span>
-              <span className="drawer-title">PIEZORESISTIVE SENSOR FLEET AUDIT LOG</span>
+              <span className="drawer-icon">🛞</span>
+              <span className="drawer-title">PIEZORESISTIVE TYRE FOOTPRINT DETECTION & AUDIT LOG</span>
               <span className="drawer-count-badge">{sensorLogs.length} Records</span>
             </div>
             <div className="drawer-actions">
@@ -1819,10 +1914,44 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             </div>
           </div>
 
+          {/* Real-time Category Breakdown Cards */}
+          <div className="fleet-drawer-summary-cards">
+            <div className="fleet-summary-card">
+              <div className="card-top"><span className="card-icon">🚗</span> <span className="card-label">Sedan</span></div>
+              <div className="card-count">{vehicleCounts.car}</div>
+              <div className="card-sub">4 Tyres • 205mm radial</div>
+            </div>
+            <div className="fleet-summary-card">
+              <div className="card-top"><span className="card-icon">🚙</span> <span className="card-label">SUV</span></div>
+              <div className="card-count">{vehicleCounts.suv}</div>
+              <div className="card-sub">4 Tyres • 245mm wide</div>
+            </div>
+            <div className="fleet-summary-card">
+              <div className="card-top"><span className="card-icon">🏍️</span> <span className="card-label">Bike</span></div>
+              <div className="card-count">{vehicleCounts.bike}</div>
+              <div className="card-sub">2 Tyres • 120mm inline</div>
+            </div>
+            <div className="fleet-summary-card">
+              <div className="card-top"><span className="card-icon">🚌</span> <span className="card-label">Bus</span></div>
+              <div className="card-count">{vehicleCounts.bus}</div>
+              <div className="card-sub">6 Tyres • Dual-rear axle</div>
+            </div>
+            <div className="fleet-summary-card">
+              <div className="card-top"><span className="card-icon">🚚</span> <span className="card-label">Truck</span></div>
+              <div className="card-count">{vehicleCounts.truck}</div>
+              <div className="card-sub">6 Tyres • Heavy freight</div>
+            </div>
+            <div className="fleet-summary-card fleet-summary-card--total">
+              <div className="card-top"><span className="card-icon">⚡</span> <span className="card-label">Total Passes</span></div>
+              <div className="card-count">{vehicleCounts.total}</div>
+              <div className="card-sub">Piezoresistive readings</div>
+            </div>
+          </div>
+
           <div className="fleet-table-container">
             {sensorLogs.length === 0 ? (
               <div className="fleet-empty-state">
-                No sensor hits recorded yet. Drive over piezoresistive plates or allow AI vehicles to cross junctions!
+                No tyre footprints recorded yet. Drive over piezoresistive plates or allow AI vehicles to cross junctions!
               </div>
             ) : (
               <table className="fleet-log-table">
@@ -1833,6 +1962,9 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
                     <th>Vehicle</th>
                     <th>Class</th>
                     <th>Source</th>
+                    <th>Tyres & Axles</th>
+                    <th>Contact Patch</th>
+                    <th>Tyre Detection Basis</th>
                     <th>Speed</th>
                     <th>Weight</th>
                     <th>Pressure</th>
@@ -1856,6 +1988,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
                           {log.source}
                         </span>
                       </td>
+                      <td>
+                        <span className="log-tyre-tag">{log.tyreCount} Tyres ({log.axleCount}A)</span>
+                      </td>
+                      <td className="log-num">{log.tyreWidthMm}mm ({log.contactPatchM2} m²)</td>
+                      <td className="log-basis">{log.classificationBasis}</td>
                       <td className="log-num">{log.speedKmh} km/h</td>
                       <td className="log-num">{log.weightTons} T</td>
                       <td className="log-num log-pressure">{log.pressureMpa} MPa</td>
@@ -1870,7 +2007,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         </div>
       )}
 
-      {/* Mini City Tactical Radar (Compact Top-Left) */}
+      {/* Mini City Tactical Radar (Positioned Neatly on Left) */}
       <div className="simulation-hud-minimap">
         <canvas ref={minimapCanvasRef} width={100} height={100} className="minimap-canvas" />
         <div className="minimap-legend">
@@ -1880,20 +2017,13 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         </div>
       </div>
 
-      {/* Compact Collapsible Missions Pill (Top-Right) */}
-      <div className="simulation-hud-missions">
-        <button
-          className="missions-toggle-btn"
-          onClick={() => setShowMissions(!showMissions)}
-          title="Toggle Mission Objectives"
-        >
-          <span className="toggle-icon">🎯</span>
-          <span className="toggle-text">
-            Missions ({missions.filter((m) => m.completed).length}/{missions.length})
-          </span>
-          <span className="toggle-arrow">{showMissions ? '▲' : '▼'}</span>
-        </button>
-        {showMissions && (
+      {/* Floating Missions Panel (Shown when Missions toggled) */}
+      {showMissions && (
+        <div className="simulation-hud-missions-panel">
+          <div className="missions-panel-header">
+            <span>🎯 MISSION OBJECTIVES</span>
+            <button className="missions-close-btn" onClick={() => setShowMissions(false)}>✕</button>
+          </div>
           <ul className="missions-dropdown-list">
             {missions.map((m) => (
               <li key={m.id} className={`mission-dropdown-item ${m.completed ? 'mission-dropdown-item--done' : ''}`}>
@@ -1902,10 +2032,10 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Compact Speedometer (Bottom-Left) */}
+      {/* Governed Speedometer (Bottom-Left) */}
       <div className="simulation-hud-speedometer">
         <div className="hud-gear-chip">{gear}</div>
         <div className="hud-speed-row">
@@ -1915,13 +2045,16 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         <div className="hud-speed-track">
           <div
             className="hud-speed-bar"
-            style={{ width: `${Math.min((speedKmh / VEHICLE_PROFILES[selectedVehicleType].maxSpeedKmh) * 100, 100)}%` }}
+            style={{ width: `${Math.min((speedKmh / trafficSpeedLimit) * 100, 100)}%` }}
           />
+        </div>
+        <div className="hud-speed-governor-tag">
+          ⚡ GOVERNED: <strong>{trafficSpeedLimit} KM/H</strong>
         </div>
         <div className="hud-speed-hint">WASD / Arrows: Drive • Space: Brake</div>
       </div>
 
-      {/* Sleek Piezoresistive Telemetry Monitor (Bottom-Right) */}
+      {/* Piezoresistive & Tyre Detection Telemetry Monitor (Bottom-Right) */}
       <div className="simulation-hud-telemetry">
         <div className="telemetry-bar-header">
           <span className="tel-dot" />
@@ -1932,6 +2065,34 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         <div className="telemetry-vehicle-row">
           <span className="tel-vname">{detectedVehicleName}</span>
           <span className="tel-vclass">{detectedClassTag}</span>
+        </div>
+
+        {/* Tyre Footprint Recognition Box */}
+        <div className="telemetry-tyre-box">
+          <div className="tyre-box-header">
+            <span className="tyre-box-icon">🛞</span>
+            <span className="tyre-box-title">TYRE DETECTION SIGNATURE</span>
+          </div>
+          <div className="tyre-box-grid">
+            <div className="tyre-box-stat">
+              <span className="tyre-box-lbl">TYRES / AXLES</span>
+              <span className="tyre-box-val">
+                {detectedTyreInfo ? `${detectedTyreInfo.tyreCount} Tyres • ${detectedTyreInfo.axleCount} Axles` : 'Scanning wheels...'}
+              </span>
+            </div>
+            <div className="tyre-box-stat">
+              <span className="tyre-box-lbl">CONTACT PATCH</span>
+              <span className="tyre-box-val">
+                {detectedTyreInfo ? `${detectedTyreInfo.tyreWidthMm}mm (${detectedTyreInfo.contactPatchM2} m²)` : '—'}
+              </span>
+            </div>
+          </div>
+          <div className="tyre-box-reason">
+            <span className="tyre-reason-lbl">DETECTION BASIS:</span>
+            <span className="tyre-reason-val">
+              {detectedTyreInfo ? detectedTyreInfo.classificationReason : 'Awaiting tyre contact on piezoresistive plate'}
+            </span>
+          </div>
         </div>
 
         <div className="telemetry-stats-row">
