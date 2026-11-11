@@ -571,3 +571,576 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── HUD Telemetry & CSV Quick Buttons ─────────────────────────────────── */
+.hud-btn-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-btn-telemetry:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+}
+
+.hud-telemetry-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 6px #16a34a;
+  animation: pulse-dot 1.2s infinite;
+}
+
+.hud-telemetry-text {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.hud-telemetry-badge {
+  background: #15803d;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-btn-csv {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-btn-csv:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+/* ── Bottom-Right Telemetry Extra Controls ──────────────────────────────── */
+.telemetry-log-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.tel-log-pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 5px #10b981;
+  animation: pulse-dot 1.4s infinite;
+}
+
+.tel-log-count-text {
+  font-size: 9px;
+  font-weight: 700;
+  color: #047857;
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tel-action-btn {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.tel-action-btn--csv {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.tel-action-btn--csv:hover {
+  background: #0369a1;
+}
+
+.tel-action-btn--view {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.tel-action-btn--view:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ── Toast Notice Notification ─────────────────────────────────────────── */
+.sim-toast-notice {
+  position: absolute;
+  top: 58px;
+  right: 18px;
+  background: #059669;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.3);
+  z-index: 100;
+  animation: fade-in-slide 0.25s ease-out;
+}
+
+@keyframes fade-in-slide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Full Screen Telemetry Modal / Inspector (Light Theme) ─────────────── */
+.telemetry-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.telemetry-modal-content {
+  background: #ffffff;
+  width: 95%;
+  max-width: 1080px;
+  max-height: 88vh;
+  border-radius: 14px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modal-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-pop {
+  0% { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.telemetry-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 10px #16a34a;
+  animation: pulse-dot 1.2s infinite;
+}
+
+.modal-title-group h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.modal-title-group p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-btn-download {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.modal-btn-download:hover {
+  background: #0369a1;
+}
+
+.modal-btn-clear {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-btn-clear:hover {
+  background: #fee2e2;
+}
+
+.modal-btn-close {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modal-btn-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ── KPI Stat Bar ──────────────────────────────────────────────────────── */
+.telemetry-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 12px 20px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.kpi-card {
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.kpi-lbl {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.kpi-val {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-val.text-blue {
+  color: #0284c7;
+}
+
+/* ── Filter Bar ────────────────────────────────────────────────────────── */
+.telemetry-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.filter-tab {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-tab:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.filter-tab--active {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.filter-tab--active:hover {
+  background: #0369a1;
+  color: #ffffff;
+}
+
+.filter-note {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ── Telemetry Table Container ─────────────────────────────────────────── */
+.telemetry-table-container {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 48vh;
+  min-height: 250px;
+  background: #ffffff;
+}
+
+.telemetry-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  text-align: left;
+}
+
+.telemetry-data-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.telemetry-data-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.telemetry-data-table tr:hover {
+  background: #f8fafc;
+}
+
+.row-user {
+  background: rgba(2, 132, 199, 0.03);
+}
+
+.col-id {
+  font-weight: 800;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-time {
+  font-variant-numeric: tabular-nums;
+  font-family: monospace;
+  font-size: 10.5px;
+  color: #475569;
+}
+
+.source-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.source-pill--user {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.source-pill--ai {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.col-vname {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.class-tag {
+  background: #f1f5f9;
+  color: #0284c7;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(2, 132, 199, 0.2);
+}
+
+.col-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.col-approach {
+  font-size: 10.5px;
+  color: #475569;
+}
+
+.col-stress {
+  font-weight: 800;
+  color: #0284c7;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-res {
+  font-weight: 800;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-volt {
+  font-weight: 800;
+  color: #15803d;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty State ───────────────────────────────────────────────────────── */
+.telemetry-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.telemetry-empty-state h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.telemetry-empty-state p {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: #64748b;
+  max-width: 420px;
+}
+
+/* ── Modal Footer ──────────────────────────────────────────────────────── */
+.telemetry-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.footer-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-btn-download-secondary {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-btn-download-secondary:hover {
+  background: #0369a1;
+}
+
+.modal-btn-close-secondary {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-btn-close-secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}

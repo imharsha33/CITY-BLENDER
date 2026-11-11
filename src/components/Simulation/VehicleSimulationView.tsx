@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import './VehicleSimulationView.css';
 
@@ -123,6 +123,8 @@ interface JunctionData {
 }
 
 interface AITrafficVehicle {
+  id: string;
+  name: string;
   group: THREE.Group;
   type: PlayerVehicleType;
   profile: VehicleProfile;
@@ -132,6 +134,27 @@ interface AITrafficVehicle {
   laneOffset: number;
   roadCoord: number;
   wheels: THREE.Mesh[];
+}
+
+export interface SensorMeasurementLog {
+  id: number;
+  time: string;
+  timestampIso: string;
+  elapsedSec: string;
+  source: 'USER' | 'AI_TRAFFIC';
+  vehicleId: string;
+  vehicleType: string;
+  vehicleClass: string;
+  weightTons: number;
+  speedKmh: number;
+  junctionId: string;
+  junctionName: string;
+  approachName: string;
+  axis: 'NS' | 'EW';
+  pressureMpa: number;
+  resistanceShiftPct: number;
+  strainMicrostrain: number;
+  signalVoltageMv: number;
 }
 
 interface BuildingCollider {
@@ -182,6 +205,101 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     { id: 'cross_turn', title: 'Turn 90° into East-West Cross Avenue at a 4-way intersection', completed: false },
     { id: 'green_wave', title: 'Trigger Adaptive Green Wave preemption at 3 junctions', completed: false },
   ]);
+
+  // ── Sensor Continuous Telemetry & CSV Export States ──
+  const sensorLogsRef = useRef<SensorMeasurementLog[]>([]);
+  const lastSensorLogTimeMapRef = useRef<Map<string, number>>(new Map());
+  const sensorLogSeqRef = useRef<number>(0);
+  const simStartTimeRef = useRef<number>(Date.now());
+  const lastCountUpdateRef = useRef<number>(0);
+  const currentCountRef = useRef<number>(0);
+
+  const [telemetryLogsCount, setTelemetryLogsCount] = useState<number>(0);
+  const [showTelemetryModal, setShowTelemetryModal] = useState<boolean>(false);
+  const [telemetryFilter, setTelemetryFilter] = useState<'ALL' | 'USER' | 'AI'>('ALL');
+  const [csvExportNotice, setCsvExportNotice] = useState<string | null>(null);
+
+  const handleDownloadCsv = useCallback(() => {
+    const logs = sensorLogsRef.current;
+    if (!logs || logs.length === 0) {
+      alert('No sensor readings captured yet. Drive your vehicle or allow AI traffic to circulate over the sensor pads.');
+      return;
+    }
+
+    const headers = [
+      'Record_ID',
+      'Timestamp_ISO',
+      'Elapsed_Simulation_Time',
+      'Source',
+      'Vehicle_ID',
+      'Vehicle_Type',
+      'Vehicle_Class',
+      'Weight_Tons',
+      'Speed_KMH',
+      'Junction_ID',
+      'Junction_Name',
+      'Approach_Name',
+      'Sensor_Axis',
+      'Axle_Pressure_MPa',
+      'Resistance_Shift_Percent',
+      'Microstrain_ue',
+      'Signal_Voltage_mV',
+    ];
+
+    const rows = logs.map((log) => [
+      log.id,
+      `"${log.timestampIso}"`,
+      `"${log.elapsedSec}"`,
+      `"${log.source}"`,
+      `"${log.vehicleId.replace(/"/g, '""')}"`,
+      `"${log.vehicleType.replace(/"/g, '""')}"`,
+      `"${log.vehicleClass}"`,
+      log.weightTons,
+      log.speedKmh,
+      `"${log.junctionId}"`,
+      `"${log.junctionName.replace(/"/g, '""')}"`,
+      `"${log.approachName.replace(/"/g, '""')}"`,
+      `"${log.axis}"`,
+      log.pressureMpa,
+      log.resistanceShiftPct,
+      log.strainMicrostrain,
+      log.signalVoltageMv,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timeStr = new Date().toISOString().replace(/[:.]/g, '-');
+    link.href = url;
+    link.setAttribute('download', `piezoresistive_sensor_telemetry_${timeStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setCsvExportNotice(`Exported ${logs.length} readings as CSV`);
+    setTimeout(() => setCsvExportNotice(null), 4000);
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    sensorLogsRef.current = [];
+    lastSensorLogTimeMapRef.current.clear();
+    sensorLogSeqRef.current = 0;
+    currentCountRef.current = 0;
+    setTelemetryLogsCount(0);
+  }, []);
+
+  const displayedLogs = useMemo(() => {
+    const all = sensorLogsRef.current;
+    let filtered = all;
+    if (telemetryFilter === 'USER') {
+      filtered = all.filter((l) => l.source === 'USER');
+    } else if (telemetryFilter === 'AI') {
+      filtered = all.filter((l) => l.source === 'AI_TRAFFIC');
+    }
+    return filtered.slice(-150).reverse();
+  }, [showTelemetryModal, telemetryFilter, telemetryLogsCount]);
 
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const switchVehicleRef = useRef<(type: PlayerVehicleType) => void>(() => {});
@@ -656,6 +774,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
     // ─── 8. 32 Active AI Traffic Vehicles Circulating Seamlessly ─────────────
     const aiTraffic: AITrafficVehicle[] = [];
+    let aiCounter = 0;
 
     function spawnAIVehicle(
       type: PlayerVehicleType,
@@ -664,8 +783,11 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       startAlong: number,
       direction: 1 | -1
     ) {
+      aiCounter++;
+      const aiId = `AI-${String(aiCounter).padStart(2, '0')}`;
       const vGroup = new THREE.Group();
       const p = VEHICLE_PROFILES[type];
+      const aiName = `${aiId} (${p.name.split(' ')[0]})`;
       const paintMat = new THREE.MeshStandardMaterial({ color: p.colorHex, metalness: 0.7, roughness: 0.25 });
       const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
       const tMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
@@ -762,6 +884,8 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
       const targetSpeed = 13.0 + Math.random() * 7.0; // 48 to 72 km/h
       aiTraffic.push({
+        id: aiId,
+        name: aiName,
         group: vGroup,
         type,
         profile: p,
@@ -1275,7 +1399,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
               sp.pulseScale += 4.5 * dt;
               if (sp.pulseScale > 3.2) sp.pulseScale = 0.5;
               sp.pulseMat.opacity = Math.max(0.95 - sp.pulseScale * 0.25, 0.0);
-              sp.lastDetectedVehicleName = `${ai.profile.icon} ${ai.profile.name}`;
+              sp.lastDetectedVehicleName = `${ai.profile.icon} ${ai.name}`;
 
               // Adaptive signal preemption (safely transitions through yellow phase)
               const isRedForAxis = (sp.axis === 'NS' && (j.currentPhase === 'EW_GREEN' || j.currentPhase === 'EW_YELLOW')) ||
@@ -1283,6 +1407,50 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
               if (isRedForAxis && j.tcuTimer > 2.0) {
                 // Shorten current phase so it clears to yellow quickly
                 j.tcuTimer = 1.0;
+              }
+
+              // Continuous Piezoresistive Telemetry Logging for AI traffic (~240ms interval per contact)
+              const now = performance.now();
+              const logKey = `${ai.id}_${sp.approachName}`;
+              const lastLog = lastSensorLogTimeMapRef.current.get(logKey) || 0;
+              if (now - lastLog >= 240) {
+                lastSensorLogTimeMapRef.current.set(logKey, now);
+
+                const aiSpeedKmh = parseFloat((ai.speed * 3.6).toFixed(1));
+                const dynamicInertia = 1.0 + (aiSpeedKmh / 120) * 0.7;
+                const pMpa = parseFloat((ai.profile.basePressureMpa * dynamicInertia * (0.95 + Math.random() * 0.1)).toFixed(2));
+                const rPct = parseFloat((-(pMpa * 11.2) * (0.98 + Math.random() * 0.04)).toFixed(1));
+                const strainMicrostrain = Math.round(pMpa * 285.5);
+                const signalVoltageMv = parseFloat((Math.abs(rPct) * 11.85).toFixed(1));
+
+                sensorLogSeqRef.current += 1;
+                const nowDate = new Date();
+                const elapsedSec = ((Date.now() - simStartTimeRef.current) / 1000).toFixed(1);
+
+                sensorLogsRef.current.push({
+                  id: sensorLogSeqRef.current,
+                  time: nowDate.toTimeString().split(' ')[0] + '.' + String(nowDate.getMilliseconds()).padStart(3, '0'),
+                  timestampIso: nowDate.toISOString(),
+                  elapsedSec: `+${elapsedSec}s`,
+                  source: 'AI_TRAFFIC',
+                  vehicleId: ai.name,
+                  vehicleType: ai.profile.name,
+                  vehicleClass: ai.profile.classTag,
+                  weightTons: ai.profile.weightTons,
+                  speedKmh: aiSpeedKmh,
+                  junctionId: j.id,
+                  junctionName: j.name,
+                  approachName: sp.approachName,
+                  axis: sp.axis,
+                  pressureMpa: pMpa,
+                  resistanceShiftPct: rPct,
+                  strainMicrostrain,
+                  signalVoltageMv,
+                });
+
+                if (sensorLogsRef.current.length > 10000) {
+                  sensorLogsRef.current.shift();
+                }
               }
             }
           });
@@ -1336,6 +1504,48 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             sp.pulseScale += 5.0 * dt;
             if (sp.pulseScale > 3.2) sp.pulseScale = 0.5;
             sp.pulseMat.opacity = Math.max(0.95 - sp.pulseScale * 0.25, 0.0);
+
+            // Continuous Piezoresistive Telemetry Logging for User Vehicle (~240ms interval per contact)
+            const now = performance.now();
+            const playerLogKey = `PLAYER_${sp.approachName}`;
+            const lastPlayerLog = lastSensorLogTimeMapRef.current.get(playerLogKey) || 0;
+            if (now - lastPlayerLog >= 240) {
+              lastSensorLogTimeMapRef.current.set(playerLogKey, now);
+
+              const pMpa = parseFloat(detectedP.toFixed(2));
+              const rPct = parseFloat(detectedDR.toFixed(1));
+              const strainMicrostrain = Math.round(pMpa * 285.5);
+              const signalVoltageMv = parseFloat((Math.abs(rPct) * 11.85).toFixed(1));
+
+              sensorLogSeqRef.current += 1;
+              const nowDate = new Date();
+              const elapsedSec = ((Date.now() - simStartTimeRef.current) / 1000).toFixed(1);
+
+              sensorLogsRef.current.push({
+                id: sensorLogSeqRef.current,
+                time: nowDate.toTimeString().split(' ')[0] + '.' + String(nowDate.getMilliseconds()).padStart(3, '0'),
+                timestampIso: nowDate.toISOString(),
+                elapsedSec: `+${elapsedSec}s`,
+                source: 'USER',
+                vehicleId: `User (${profile.name.split(' ')[0]})`,
+                vehicleType: profile.name,
+                vehicleClass: profile.classTag,
+                weightTons: profile.weightTons,
+                speedKmh: parseFloat(kmh.toFixed(1)),
+                junctionId: j.id,
+                junctionName: j.name,
+                approachName: sp.approachName,
+                axis: sp.axis,
+                pressureMpa: pMpa,
+                resistanceShiftPct: rPct,
+                strainMicrostrain,
+                signalVoltageMv,
+              });
+
+              if (sensorLogsRef.current.length > 10000) {
+                sensorLogsRef.current.shift();
+              }
+            }
 
             if (currentType === 'car') {
               setMissions((prev) => prev.map((m) => (m.id === 'detect_car' ? { ...m, completed: true } : m)));
@@ -1466,6 +1676,16 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           ctx.restore();
         }
       }
+
+      // Throttled UI count sync (every ~200ms)
+      const nowMs = performance.now();
+      if (nowMs - lastCountUpdateRef.current > 200) {
+        lastCountUpdateRef.current = nowMs;
+        if (currentCountRef.current !== sensorLogSeqRef.current) {
+          currentCountRef.current = sensorLogSeqRef.current;
+          setTelemetryLogsCount(sensorLogSeqRef.current);
+        }
+      }
     };
 
     animId = requestAnimationFrame(animate);
@@ -1536,6 +1756,25 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             <span className="pill-val">{nextJunctionName}</span>
             <span className="pill-sub">{nextJunctionDist}m</span>
           </div>
+
+          {/* Continuous Sensor Readings Log & CSV Quick Download */}
+          <button
+            className="hud-btn-telemetry"
+            onClick={() => setShowTelemetryModal(true)}
+            title="Open Live Sensor Telemetry Stream"
+          >
+            <span className="hud-telemetry-dot" />
+            <span className="hud-telemetry-text">SENSORS</span>
+            <span className="hud-telemetry-badge">{telemetryLogsCount}</span>
+          </button>
+
+          <button
+            className="hud-btn-csv"
+            onClick={handleDownloadCsv}
+            title="Export All Piezoresistive Sensor Measurements to CSV"
+          >
+            📥 CSV
+          </button>
 
           <div className="hud-cam-toggles">
             <button
@@ -1650,7 +1889,187 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           <span className="tel-zone-lbl">ZONE:</span>
           <span className="tel-zone-val">{currentZoneName}</span>
         </div>
+
+        {/* Continuous Logging Counter & Quick Actions */}
+        <div className="telemetry-log-stats-row">
+          <span className="tel-log-pulse" />
+          <span className="tel-log-count-text">
+            {telemetryLogsCount > 0 ? `${telemetryLogsCount} readings logged` : 'Sensors active • 0 readings'}
+          </span>
+        </div>
+
+        <div className="telemetry-actions-row">
+          <button
+            className="tel-action-btn tel-action-btn--csv"
+            onClick={handleDownloadCsv}
+            title="Download CSV of all vehicle readings"
+          >
+            📥 CSV
+          </button>
+          <button
+            className="tel-action-btn tel-action-btn--view"
+            onClick={() => setShowTelemetryModal(true)}
+            title="Open Live Sensor Stream Log"
+          >
+            📊 View Log ({telemetryLogsCount})
+          </button>
+        </div>
       </div>
+
+      {/* CSV Export Success Toast */}
+      {csvExportNotice && (
+        <div className="sim-toast-notice">
+          ✓ {csvExportNotice}
+        </div>
+      )}
+
+      {/* Full Real-Time Sensor Telemetry Modal & Table */}
+      {showTelemetryModal && (
+        <div className="telemetry-modal-backdrop" onClick={() => setShowTelemetryModal(false)}>
+          <div className="telemetry-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="telemetry-modal-header">
+              <div className="modal-title-group">
+                <span className="modal-live-dot" />
+                <div>
+                  <h3>Continuous Piezoresistive Sensor Measurements</h3>
+                  <p>Real-time dynamic axle load, resistance shift, and microstrain recorded across all 25 intersections</p>
+                </div>
+              </div>
+              <div className="modal-header-actions">
+                <button className="modal-btn-download" onClick={handleDownloadCsv}>
+                  📥 Download CSV ({telemetryLogsCount})
+                </button>
+                <button className="modal-btn-clear" onClick={handleClearLogs} title="Clear recorded data">
+                  🗑️ Clear
+                </button>
+                <button className="modal-btn-close" onClick={() => setShowTelemetryModal(false)} title="Close Inspector">
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* KPI Stat Cards */}
+            <div className="telemetry-kpi-bar">
+              <div className="kpi-card">
+                <span className="kpi-lbl">TOTAL MEASUREMENTS</span>
+                <span className="kpi-val">{telemetryLogsCount}</span>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-lbl">USER VEHICLE PASSES</span>
+                <span className="kpi-val">
+                  {sensorLogsRef.current.filter((l) => l.source === 'USER').length}
+                </span>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-lbl">AI FLEET PASSES</span>
+                <span className="kpi-val">
+                  {sensorLogsRef.current.filter((l) => l.source === 'AI_TRAFFIC').length}
+                </span>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-lbl">PEAK AXLE STRESS</span>
+                <span className="kpi-val text-blue">
+                  {sensorLogsRef.current.length > 0
+                    ? Math.max(...sensorLogsRef.current.map((l) => l.pressureMpa)).toFixed(2) + ' MPa'
+                    : '0.00 MPa'}
+                </span>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="telemetry-filter-bar">
+              <div className="filter-tabs">
+                <button
+                  className={`filter-tab ${telemetryFilter === 'ALL' ? 'filter-tab--active' : ''}`}
+                  onClick={() => setTelemetryFilter('ALL')}
+                >
+                  All Vehicles ({sensorLogsRef.current.length})
+                </button>
+                <button
+                  className={`filter-tab ${telemetryFilter === 'USER' ? 'filter-tab--active' : ''}`}
+                  onClick={() => setTelemetryFilter('USER')}
+                >
+                  🚗 User Vehicle ({sensorLogsRef.current.filter((l) => l.source === 'USER').length})
+                </button>
+                <button
+                  className={`filter-tab ${telemetryFilter === 'AI' ? 'filter-tab--active' : ''}`}
+                  onClick={() => setTelemetryFilter('AI')}
+                >
+                  🤖 AI Traffic Fleet ({sensorLogsRef.current.filter((l) => l.source === 'AI_TRAFFIC').length})
+                </button>
+              </div>
+              <span className="filter-note">
+                Showing latest {displayedLogs.length} entries (real-time stream)
+              </span>
+            </div>
+
+            {/* Live Data Table */}
+            <div className="telemetry-table-container">
+              {displayedLogs.length === 0 ? (
+                <div className="telemetry-empty-state">
+                  <span className="empty-icon">📡</span>
+                  <h4>Waiting for Sensor Data...</h4>
+                  <p>Drive your vehicle over any sensor pad, or let AI traffic pass through intersections to capture data.</p>
+                </div>
+              ) : (
+                <table className="telemetry-data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Time</th>
+                      <th>Source</th>
+                      <th>Vehicle</th>
+                      <th>Class</th>
+                      <th>Weight</th>
+                      <th>Speed</th>
+                      <th>Junction & Approach</th>
+                      <th>Axle Stress</th>
+                      <th>ΔR/R₀</th>
+                      <th>Voltage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedLogs.map((log) => (
+                      <tr key={log.id} className={log.source === 'USER' ? 'row-user' : 'row-ai'}>
+                        <td className="col-id">#{log.id}</td>
+                        <td className="col-time">{log.time}</td>
+                        <td>
+                          <span className={`source-pill ${log.source === 'USER' ? 'source-pill--user' : 'source-pill--ai'}`}>
+                            {log.source === 'USER' ? 'USER' : 'AI'}
+                          </span>
+                        </td>
+                        <td className="col-vname">{log.vehicleId}</td>
+                        <td><span className="class-tag">{log.vehicleClass}</span></td>
+                        <td className="col-num">{log.weightTons} T</td>
+                        <td className="col-num">{log.speedKmh} km/h</td>
+                        <td className="col-approach">{log.approachName}</td>
+                        <td className="col-stress">{log.pressureMpa} MPa</td>
+                        <td className="col-res">{log.resistanceShiftPct}%</td>
+                        <td className="col-volt">{log.signalVoltageMv} mV</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="telemetry-modal-footer">
+              <span className="footer-status">
+                <span className="status-dot" /> Sensor Network: 25 Intersections × 4 Approaches = 100 Piezoresistive Plates Online
+              </span>
+              <div className="footer-actions">
+                <button className="modal-btn-download-secondary" onClick={handleDownloadCsv}>
+                  📥 Export to CSV
+                </button>
+                <button className="modal-btn-close-secondary" onClick={() => setShowTelemetryModal(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
