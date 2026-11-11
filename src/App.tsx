@@ -1295,28 +1295,6 @@ export default function App() {
         )}
 
 
-        {/* Optional Compact Details Modal */}
-        {showDetails && (
-          <DetailsModal
-            progress={progress}
-            mode={mode}
-            realLocationData={realLocationData}
-            onClose={() => setShowDetails(false)}
-          />
-        )}
-
-        {/* Civil Plan Engineering Specifications Modal */}
-        {showSpecsModal && (
-          <PlanSpecsModal
-            currentPlan={demoPlan}
-            onSelectPlan={(plan) => {
-              handleSelectDemoPlan(plan);
-              setProgress(1.0);
-            }}
-            onClose={() => setShowSpecsModal(false)}
-          />
-        )}
-
         {/* Smart Signal Junction & Piezoresistive Road Sensor Panel (FLOW mode only) */}
         {mainNavMode === 'flow' && isRoadSensorOpen && (
           <RoadSensorPanel
@@ -1337,6 +1315,27 @@ export default function App() {
           </div>
         </div>
       </main>
+      )}
+
+      {/* ── Global High-Level Modals (Rendered outside 3D viewport canvas for reliable interaction) ── */}
+      {showDetails && (
+        <DetailsModal
+          progress={progress}
+          mode={mode}
+          realLocationData={realLocationData}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
+
+      {showSpecsModal && (
+        <PlanSpecsModal
+          currentPlan={demoPlan}
+          onSelectPlan={(plan) => {
+            handleSelectDemoPlan(plan);
+            setProgress(1.0);
+          }}
+          onClose={() => setShowSpecsModal(false)}
+        />
       )}
 
       {/* ── Scroll-Down Project Information Website: Flow, Build, Route ── */}

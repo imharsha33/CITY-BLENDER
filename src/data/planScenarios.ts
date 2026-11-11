@@ -8,7 +8,7 @@ import type {
 } from '../types/infrastructure';
 import { demoScenario as fourLaneScenario } from './demoScenario';
 
-export type DemoPlanType = 'four_lane' | 'flyover' | 'ring_road' | 'road_sensor';
+export type DemoPlanType = 'four_lane' | 'flyover' | 'ring_road' | 'road_sensor' | 'combined';
 
 export interface PlanMeta {
   id: DemoPlanType;
@@ -152,6 +152,37 @@ export const PLAN_METAS: Record<DemoPlanType, PlanMeta> = {
       'Zero maintenance solid-state axle detection',
     ],
     constructionPhasesCount: 4,
+  },
+  combined: {
+    id: 'combined',
+    title: 'Integrated 3-Road Master Network (4-Lane + Flyover + Ring Road)',
+    shortTitle: 'Combined (3-in-1)',
+    badge: 'UNIFIED 3-ROAD MASTER PLAN',
+    badgeColor: '#ec4899',
+    icon: '🌐',
+    headline: 'Unified 4-lane expressway, grade-separated flyover & orbital bypass network',
+    description: 'Combines all three civil road architectures into one realistic continuous multi-tier city network: a central 4-lane divided expressway, an elevated flyover viaduct carrying through-traffic above the central intersection, and an outer orbital ring road connected via circulating roundabouts and slip roads.',
+    problemResolved: 'Resolves all structural traffic bottlenecks simultaneously: eliminates signal delays with the flyover, doubles corridor capacity with the 4-lane expansion, and diverts 55% of heavy intercity transit with the orbital ring road.',
+    standards: 'IRC:73-2023 / IRC:SP:84-2019 / IRC:SP:87-2019 Integrated Standards',
+    designSpeed: '80-100 km/h (Expressway) / 70 km/h (Flyover) / 100 km/h (Ring Road)',
+    capacityGain: '+240% overall network capacity, zero single-point failure bottleneck',
+    corridorLength: 'Integrated Regional Master Network (300m x 300m civil area)',
+    crossSection: {
+      lanes: '4-Lane Ground + 4-Lane Flyover + 4-Lane Ring Road (12 Total Lanes)',
+      laneWidth: '3.50m - 3.75m standard travelway lanes',
+      median: 'Concrete safety median barriers & landscaped green planters',
+      shoulders: 'Paved emergency breakdown shoulders across all alignments',
+      verticalClearance: '6.80m grade clearance under flyover viaduct',
+      orbitalRadius: '75.0m continuous orbital bypass radius',
+    },
+    keyBenefits: [
+      'Seamless multi-tier traffic: through-corridor traffic flies above on elevated viaduct',
+      'Ground 4-lane expressway handles local urban distribution and feeder arterials',
+      'Outer orbital ring road routes freight and regional logistics around the city',
+      'Connected diamond slip-ramps and multi-lane roundabouts link all three tiers',
+      'Full collision-free vehicle simulation with intelligent headway & obstacle avoidance',
+    ],
+    constructionPhasesCount: 12,
   },
 };
 
@@ -312,16 +343,19 @@ export const flyoverScenario: InfrastructureScenario = {
 
   vehicles: [
     // Elevated Express Flyover Traffic (+Z direction, speed 0.22)
-    { id: 'fv1', type: 'car', color: '#e74c3c', speed: 0.22, laneIndex: 0, direction: 1, initialOffset: -80 },
-    { id: 'fv2', type: 'car', color: '#3498db', speed: 0.20, laneIndex: 1, direction: 1, initialOffset: -20 },
-    { id: 'fv3', type: 'bus', color: '#f39c12', speed: 0.16, laneIndex: 0, direction: 1, initialOffset:  30 },
+    { id: 'fv1', type: 'sedan', color: '#e74c3c', speed: 0.22, laneIndex: 0, direction: 1, initialOffset: -80 },
+    { id: 'fv2', type: 'suv',   color: '#3498db', speed: 0.20, laneIndex: 1, direction: 1, initialOffset: -20 },
+    { id: 'fv3', type: 'bus',   color: '#f39c12', speed: 0.16, laneIndex: 0, direction: 1, initialOffset:  30 },
     // Elevated Express Flyover Traffic (-Z direction, speed 0.22)
-    { id: 'fv4', type: 'car', color: '#2ecc71', speed: 0.21, laneIndex: 2, direction: -1, initialOffset:  80 },
-    { id: 'fv5', type: 'car', color: '#9b59b6', speed: 0.22, laneIndex: 3, direction: -1, initialOffset:  20 },
+    { id: 'fv4', type: 'bike',  color: '#2ecc71', speed: 0.21, laneIndex: 2, direction: -1, initialOffset:  80 },
+    { id: 'fv5', type: 'sedan', color: '#9b59b6', speed: 0.22, laneIndex: 3, direction: -1, initialOffset:  20 },
     { id: 'fv6', type: 'truck', color: '#95a5a6', speed: 0.15, laneIndex: 2, direction: -1, initialOffset: -40 },
     // Ground Surface Cross-Traffic (navigating under the flyover along X axis)
-    { id: 'fv7', type: 'car', color: '#d35400', speed: 0.12, laneIndex: 4, direction: 1, initialOffset: -50 },
+    { id: 'fv7', type: 'suv',   color: '#d35400', speed: 0.12, laneIndex: 4, direction: 1, initialOffset: -50 },
     { id: 'fv8', type: 'truck', color: '#7f8c8d', speed: 0.10, laneIndex: 5, direction: -1, initialOffset: 45 },
+    // Dedicated Service Road Traffic (cruising at grade along flanking frontage roads)
+    { id: 'fv9', type: 'sedan', color: '#10b981', speed: 0.18, laneIndex: 6, direction: 1, initialOffset: -60 },
+    { id: 'fv10', type: 'suv',  color: '#eab308', speed: 0.16, laneIndex: 7, direction: -1, initialOffset: 70 },
   ],
 
   streetLights: [
@@ -507,15 +541,15 @@ export const ringRoadScenario: InfrastructureScenario = {
   vehicles: [
     // Clockwise orbital ring traffic (car, truck, bus cruising the bypass)
     { id: 'rv1', type: 'truck', color: '#7f8c8d', speed: 0.18, laneIndex: 0, direction:  1, initialOffset: -80 },
-    { id: 'rv2', type: 'car',   color: '#2980b9', speed: 0.22, laneIndex: 1, direction:  1, initialOffset: -25 },
-    { id: 'rv3', type: 'car',   color: '#e74c3c', speed: 0.23, laneIndex: 1, direction:  1, initialOffset:  35 },
+    { id: 'rv2', type: 'sedan', color: '#2980b9', speed: 0.22, laneIndex: 1, direction:  1, initialOffset: -25 },
+    { id: 'rv3', type: 'suv',   color: '#e74c3c', speed: 0.23, laneIndex: 1, direction:  1, initialOffset:  35 },
     { id: 'rv4', type: 'bus',   color: '#f39c12', speed: 0.16, laneIndex: 0, direction:  1, initialOffset:  80 },
     // Counter-clockwise orbital ring traffic
-    { id: 'rv5', type: 'car',   color: '#27ae60', speed: 0.22, laneIndex: 2, direction: -1, initialOffset:  70 },
+    { id: 'rv5', type: 'sedan', color: '#27ae60', speed: 0.22, laneIndex: 2, direction: -1, initialOffset:  70 },
     { id: 'rv6', type: 'truck', color: '#95a5a6', speed: 0.17, laneIndex: 3, direction: -1, initialOffset:  15 },
-    { id: 'rv7', type: 'car',   color: '#8e44ad', speed: 0.24, laneIndex: 2, direction: -1, initialOffset: -40 },
+    { id: 'rv7', type: 'bike',  color: '#8e44ad', speed: 0.24, laneIndex: 2, direction: -1, initialOffset: -40 },
     // Feeder traffic joining via radial avenues
-    { id: 'rv8', type: 'car',   color: '#16a085', speed: 0.15, laneIndex: 4, direction:  1, initialOffset:   0 },
+    { id: 'rv8', type: 'suv',   color: '#16a085', speed: 0.15, laneIndex: 4, direction:  1, initialOffset:   0 },
   ],
 
   streetLights: [
@@ -539,10 +573,175 @@ export const ringRoadScenario: InfrastructureScenario = {
   },
 };
 
+// ─── Combined 3-Road Integrated Master Scenario ──────────────────────────────
+export const combinedScenario: InfrastructureScenario = {
+  id: 'plan-combined-3-roads-master',
+  name: 'Integrated 3-Road Master Network (4-Lane + Flyover + Ring Road)',
+  description: 'Grand master civil corridor combining a 4-lane divided expressway, grade-separated elevated flyover, and outer orbital bypass into one unified smart city network.',
+  location: 'Metropolitan Integrated Transport Corridor & Orbital Beltway',
+
+  currentState: {
+    id: 'existing-bottleneck-network',
+    name: 'Existing Single-Tier Congested Corridor',
+    roadType: 'arterial',
+    geometry: {
+      lanes: 2,
+      laneWidth: 3.5,
+      length: 260,
+      hasShoulder: false,
+      hasMarkings: true,
+      hasDrainage: false,
+      hasSidewalk: true,
+    },
+    existingCondition: 'poor',
+    yearBuilt: 2004,
+  },
+
+  proposedState: {
+    id: 'combined-multi-tier-system',
+    name: 'Multi-Tier Unified Transportation Network',
+    roadType: 'expressway',
+    geometry: {
+      lanes: 12,
+      laneWidth: 3.5,
+      length: 300,
+      hasShoulder: true,
+      shoulderWidth: 1.5,
+      hasMedian: true,
+      medianWidth: 2.0,
+      hasMarkings: true,
+      hasDrainage: true,
+      hasSidewalk: true,
+    },
+  },
+
+  upgrade: {
+    type: 'combination',
+    existingLanes: 2,
+    proposedLanes: 12,
+    reason: ['traffic_congestion', 'capacity_upgrade', 'connectivity', 'safety'],
+    priority: 'critical',
+  },
+
+  constructionPhases: [
+    {
+      id: 'existing',
+      name: 'Existing Baseline Network',
+      description: 'Single-tier choked arterial with ground level gridlock and freight delays.',
+      timelineStart: 0.00,
+      timelineEnd: 0.12,
+      year: 2026,
+    },
+    {
+      id: 'survey',
+      name: 'Corridor & Orbital Demarcation',
+      description: 'High-precision LiDAR survey, utility re-routing and perimeter ring road alignment.',
+      timelineStart: 0.12,
+      timelineEnd: 0.25,
+      year: 2026,
+    },
+    {
+      id: 'earthwork',
+      name: 'Pier Foundations & Orbital Earthwork',
+      description: 'Bored piling for flyover pier bents alongside heavy cutting and embankment grading for the ring road.',
+      timelineStart: 0.25,
+      timelineEnd: 0.45,
+      year: 2027,
+    },
+    {
+      id: 'modification',
+      name: 'Piers, Roundabouts & Ground 4-Lane Base',
+      description: 'Erecting flyover crosshead bents, casting multi-lane roundabouts, and preparing aggregate sub-base for the 4-lane expressway.',
+      timelineStart: 0.45,
+      timelineEnd: 0.65,
+      year: 2028,
+    },
+    {
+      id: 'road_base',
+      name: 'Box Girder Launch & Ramp Embankments',
+      description: 'Launching segmental flyover deck box girders, casting smooth approach ramps, and paving orbital ring road asphalt.',
+      timelineStart: 0.65,
+      timelineEnd: 0.85,
+      year: 2029,
+    },
+    {
+      id: 'completed',
+      name: 'Integrated 3-Road Network Operational',
+      description: 'Commissioning complete 3-tier network: flyover express through-flow, 4-lane ground distributor, and orbital ring road bypass.',
+      timelineStart: 0.85,
+      timelineEnd: 1.00,
+      year: 2030,
+    },
+  ],
+
+  buildings: [
+    { id: 'cb1', position: [-48, 0, -95], width: 16, depth: 14, height: 26, color: '#c4bbb0', roofType: 'flat', side: 'left' },
+    { id: 'cb2', position: [-50, 0, -50], width: 15, depth: 13, height: 22, color: '#bab2a2', roofType: 'sloped', side: 'left' },
+    { id: 'cb3', position: [-52, 0,  50], width: 14, depth: 15, height: 28, color: '#d2c8b8', roofType: 'flat', side: 'left' },
+    { id: 'cb4', position: [-48, 0,  95], width: 16, depth: 12, height: 20, color: '#bdb5a5', roofType: 'hip', side: 'left' },
+    { id: 'cb5', position: [ 48, 0, -95], width: 15, depth: 13, height: 24, color: '#c8bfae', roofType: 'sloped', side: 'right' },
+    { id: 'cb6', position: [ 50, 0, -50], width: 13, depth: 15, height: 30, color: '#cec6b6', roofType: 'flat', side: 'right' },
+    { id: 'cb7', position: [ 52, 0,  50], width: 16, depth: 12, height: 22, color: '#b4ac9c', roofType: 'hip', side: 'right' },
+    { id: 'cb8', position: [ 48, 0,  95], width: 14, depth: 14, height: 25, color: '#cac2b2', roofType: 'flat', side: 'right' },
+  ],
+
+  trees: [
+    { id: 'ct1', position: [-26, 0, -110], scale: 1.2, type: 'tall' },
+    { id: 'ct2', position: [-28, 0,  -70], scale: 1.1, type: 'round' },
+    { id: 'ct3', position: [-28, 0,   70], scale: 1.3, type: 'tall' },
+    { id: 'ct4', position: [-26, 0,  110], scale: 1.0, type: 'round' },
+    { id: 'ct5', position: [ 26, 0, -110], scale: 1.1, type: 'round' },
+    { id: 'ct6', position: [ 28, 0,  -70], scale: 1.2, type: 'tall' },
+    { id: 'ct7', position: [ 28, 0,   70], scale: 1.3, type: 'round' },
+    { id: 'ct8', position: [ 26, 0,  110], scale: 1.0, type: 'bush' },
+  ],
+
+  vehicles: [
+    // 1. Elevated Flyover Express Vehicles
+    { id: 'cv_fly1', type: 'sedan', color: '#0284c7', speed: 0.24, laneIndex: 0, direction:  1, initialOffset: -85 },
+    { id: 'cv_fly2', type: 'suv',   color: '#3b82f6', speed: 0.22, laneIndex: 1, direction:  1, initialOffset: -30 },
+    { id: 'cv_fly3', type: 'bike',  color: '#ef4444', speed: 0.23, laneIndex: 2, direction: -1, initialOffset:  80 },
+    { id: 'cv_fly4', type: 'sedan', color: '#8b5cf6', speed: 0.21, laneIndex: 3, direction: -1, initialOffset:  25 },
+
+    // 2. Ground 4-Lane Divided Expressway Vehicles
+    { id: 'cv_gnd1', type: 'bus',   color: '#10b981', speed: 0.17, laneIndex: 4, direction:  1, initialOffset: -105 },
+    { id: 'cv_gnd2', type: 'suv',   color: '#f59e0b', speed: 0.20, laneIndex: 5, direction:  1, initialOffset:  -45 },
+    { id: 'cv_gnd3', type: 'truck', color: '#64748b', speed: 0.16, laneIndex: 6, direction: -1, initialOffset:  110 },
+    { id: 'cv_gnd4', type: 'sedan', color: '#ec4899', speed: 0.19, laneIndex: 7, direction: -1, initialOffset:   50 },
+
+    // 3. Orbital Ring Road Outer Bypass Vehicles
+    { id: 'cv_orb1', type: 'truck', color: '#475569', speed: 0.18, laneIndex: 8, direction:  1, initialOffset: -75 },
+    { id: 'cv_orb2', type: 'suv',   color: '#06b6d4', speed: 0.22, laneIndex: 9, direction:  1, initialOffset: -20 },
+    { id: 'cv_orb3', type: 'bus',   color: '#eab308', speed: 0.16, laneIndex: 10, direction: -1, initialOffset:  65 },
+    { id: 'cv_orb4', type: 'sedan', color: '#14b8a6', speed: 0.23, laneIndex: 11, direction: -1, initialOffset: -40 },
+  ],
+
+  streetLights: [
+    { id: 'csl1', position: [0, 0, -80], side: 'median' },
+    { id: 'csl2', position: [0, 0, -40], side: 'median' },
+    { id: 'csl3', position: [0, 0,   0], side: 'median' },
+    { id: 'csl4', position: [0, 0,  40], side: 'median' },
+    { id: 'csl5', position: [0, 0,  80], side: 'median' },
+  ],
+
+  constructionEquipment: [
+    { id: 'cce1', type: 'crane', position: [14, 0, -10], activePhases: ['modification', 'road_base'] },
+    { id: 'cce2', type: 'excavator', position: [-14, 0, 20], activePhases: ['earthwork', 'modification'] },
+    { id: 'cce3', type: 'roller', position: [-18, 0, -70], activePhases: ['modification', 'road_base'] },
+    { id: 'cce4', type: 'dump_truck', position: [18, 0, 80], activePhases: ['survey', 'earthwork'] },
+  ],
+
+  timeline: {
+    startYear: 2026,
+    endYear: 2030,
+  },
+};
+
 // Scenario map
 export const SCENARIOS: Record<DemoPlanType, InfrastructureScenario> = {
   four_lane: fourLaneScenario,
   flyover: flyoverScenario,
   ring_road: ringRoadScenario,
   road_sensor: fourLaneScenario,
+  combined: combinedScenario,
 };

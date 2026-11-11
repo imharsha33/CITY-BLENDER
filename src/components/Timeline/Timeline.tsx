@@ -48,6 +48,16 @@ function getPhasesForScenario(scenario: InfrastructureScenario): CivilPhaseMeta[
     ];
   }
 
+  if (type === 'combination') {
+    return [
+      { num: 1, tag: 'Phase 1', name: 'Corridor & Alignment', detail: 'LiDAR boundary demarcation, utility relocation & slipways', start: 0.00, end: 0.18, jump: 0.09 },
+      { num: 2, tag: 'Phase 2', name: 'Foundations & Earthwork', detail: 'Bored flyover pier pile caps, orbital ring cutting & sub-base grading', start: 0.18, end: 0.38, jump: 0.28 },
+      { num: 3, tag: 'Phase 3', name: 'Piers & Roundabouts', detail: 'Hammerhead pier bents, roundabouts & 4-lane ground base course', start: 0.38, end: 0.62, jump: 0.50 },
+      { num: 4, tag: 'Phase 4', name: 'Box Girders & Ramps', detail: 'Precast flyover segmental deck, monolithic approach ramps & ring paving', start: 0.62, end: 0.82, jump: 0.72 },
+      { num: 5, tag: 'Phase 5', name: 'Integrated Flow', detail: 'Full 3-tier master network operational with coordinated traffic simulation', start: 0.82, end: 1.00, jump: 1.00 },
+    ];
+  }
+
   // Default: 4-Lane Expressway Expansion
   return [
     { num: 1, tag: 'Phase 1', name: 'Corridor Survey', detail: 'Laser boundary marking & construction work-zone cones', start: 0.00, end: 0.20, jump: 0.10 },

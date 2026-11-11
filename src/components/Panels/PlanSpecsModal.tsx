@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { DemoPlanType } from '../../data/planScenarios';
 import { PLAN_METAS, SCENARIOS } from '../../data/planScenarios';
 
@@ -13,15 +13,37 @@ export const PlanSpecsModal: React.FC<PlanSpecsModalProps> = ({
   onSelectPlan,
   onClose,
 }) => {
-  const meta = PLAN_METAS[currentPlan];
-  const scenario = SCENARIOS[currentPlan];
+  const meta = PLAN_METAS[currentPlan] || PLAN_METAS.four_lane;
+  const scenario = SCENARIOS[currentPlan] || SCENARIOS.four_lane;
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop"
+      onClick={(e) => {
+        // Close if clicking the backdrop itself
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Civil Plan Specifications"
+    >
       <div
         className="modal-card plan-specs-modal"
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 840 }}
+        style={{ maxWidth: 860 }}
       >
         {/* Header */}
         <div className="modal-card__header">
@@ -44,21 +66,35 @@ export const PlanSpecsModal: React.FC<PlanSpecsModalProps> = ({
             </h2>
             <p className="modal-card__subtitle">{meta.description}</p>
           </div>
-          <button className="modal-card__close-btn" onClick={onClose} title="Close specifications">
+          <button
+            type="button"
+            className="modal-card__close-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            title="Close specifications (Esc)"
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
 
         {/* Plan Switcher Pills inside Modal */}
         <div className="plan-specs-pills-row">
-          {(['four_lane', 'flyover', 'ring_road', 'road_sensor'] as DemoPlanType[]).map(pKey => {
+          {(['four_lane', 'flyover', 'ring_road', 'combined', 'road_sensor'] as DemoPlanType[]).map(pKey => {
             const pMeta = PLAN_METAS[pKey];
+            if (!pMeta) return null;
             const isSel = currentPlan === pKey;
             return (
               <button
                 key={pKey}
+                type="button"
                 className={`plan-specs-pill ${isSel ? 'plan-specs-pill--active' : ''}`}
-                onClick={() => onSelectPlan(pKey)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectPlan(pKey);
+                }}
                 style={isSel ? { borderColor: pMeta.badgeColor, color: pMeta.badgeColor } : {}}
               >
                 <span>{pMeta.icon}</span>
@@ -153,25 +189,27 @@ export const PlanSpecsModal: React.FC<PlanSpecsModalProps> = ({
           </div>
 
           {/* Section 4: Construction Phasing Sequence */}
-          <div className="specs-section">
-            <h4 className="specs-section-title">
-              CONSTRUCTION PHASING SEQUENCE ({scenario.constructionPhases.length} STAGES)
-            </h4>
-            <div className="specs-phases-timeline">
-              {scenario.constructionPhases.map((phase, idx) => (
-                <div key={phase.id} className="specs-phase-card">
-                  <div className="specs-phase-num">{(idx + 1).toString().padStart(2, '0')}</div>
-                  <div className="specs-phase-info">
-                    <span className="specs-phase-name">{phase.name}</span>
-                    <span className="specs-phase-desc">{phase.description}</span>
+          {scenario?.constructionPhases && scenario.constructionPhases.length > 0 && (
+            <div className="specs-section">
+              <h4 className="specs-section-title">
+                CONSTRUCTION PHASING SEQUENCE ({scenario.constructionPhases.length} STAGES)
+              </h4>
+              <div className="specs-phases-timeline">
+                {scenario.constructionPhases.map((phase, idx) => (
+                  <div key={phase.id} className="specs-phase-card">
+                    <div className="specs-phase-num">{(idx + 1).toString().padStart(2, '0')}</div>
+                    <div className="specs-phase-info">
+                      <span className="specs-phase-name">{phase.name}</span>
+                      <span className="specs-phase-desc">{phase.description}</span>
+                    </div>
+                    <div className="specs-phase-progress">
+                      {Math.round(phase.timelineStart * 100)}% – {Math.round(phase.timelineEnd * 100)}%
+                    </div>
                   </div>
-                  <div className="specs-phase-progress">
-                    {Math.round(phase.timelineStart * 100)}% – {Math.round(phase.timelineEnd * 100)}%
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -179,7 +217,14 @@ export const PlanSpecsModal: React.FC<PlanSpecsModalProps> = ({
           <span className="modal-footer-disclaimer">
             Outputs rendered according to IRC/MoRTH & AASHTO geometric design guidelines.
           </span>
-          <button className="neumorphic-btn neumorphic-btn--accent" onClick={onClose}>
+          <button
+            type="button"
+            className="neumorphic-btn neumorphic-btn--accent"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+          >
             <span className="btn-label">CLOSE SPECIFICATIONS</span>
           </button>
         </div>

@@ -1,8 +1,27 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import './VehicleSimulationView.css';
+import {
+  createVehicle as createDetailedVehicle,
+  type VehicleInstance,
+} from '../Scene/Vehicles';
 
 export type PlayerVehicleType = 'car' | 'bike' | 'suv' | 'bus' | 'truck';
+
+export interface SensorDetectionLog {
+  id: number;
+  time: string;
+  isoTime: string;
+  vehicleType: PlayerVehicleType;
+  vehicleName: string;
+  classTag: string;
+  speedKmh: number;
+  weightTons: number;
+  pressureMpa: number;
+  deltaROverR: number;
+  approach: string;
+  source: 'AI Traffic' | 'Player Vehicle';
+}
 
 interface VehicleProfile {
   type: PlayerVehicleType;
@@ -123,38 +142,18 @@ interface JunctionData {
 }
 
 interface AITrafficVehicle {
-  id: string;
-  name: string;
   group: THREE.Group;
+  instance: VehicleInstance;
   type: PlayerVehicleType;
   profile: VehicleProfile;
+  speedVariation: number;
   speed: number;
   axis: 'NS' | 'EW';
   direction: 1 | -1;
   laneOffset: number;
   roadCoord: number;
   wheels: THREE.Mesh[];
-}
-
-export interface SensorMeasurementLog {
-  id: number;
-  time: string;
-  timestampIso: string;
-  elapsedSec: string;
-  source: 'USER' | 'AI_TRAFFIC';
-  vehicleId: string;
-  vehicleType: string;
-  vehicleClass: string;
-  weightTons: number;
-  speedKmh: number;
-  junctionId: string;
-  junctionName: string;
-  approachName: string;
-  axis: 'NS' | 'EW';
-  pressureMpa: number;
-  resistanceShiftPct: number;
-  strainMicrostrain: number;
-  signalVoltageMv: number;
+  lastSensorTriggerTime: number;
 }
 
 interface BuildingCollider {
@@ -198,6 +197,119 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
   const [crashBanner, setCrashBanner] = useState<string | null>(null);
   const [showMissions, setShowMissions] = useState<boolean>(false);
 
+  // Traffic Control & Fleet Sensor Log States
+  const [trafficPaused, setTrafficPaused] = useState<boolean>(false);
+  const trafficPausedRef = useRef<boolean>(false);
+
+  const [trafficSpeedLimit, setTrafficSpeedLimit] = useState<number>(30); // 30 km/h default (comfortable city speed)
+  const trafficSpeedLimitRef = useRef<number>(30);
+
+  const [playerSpeedGoverned, setPlayerSpeedGoverned] = useState<boolean>(false);
+  const playerSpeedGovernedRef = useRef<boolean>(false);
+
+  const [sensorLogs, setSensorLogs] = useState<SensorDetectionLog[]>([]);
+  const sensorLogsRef = useRef<SensorDetectionLog[]>([]);
+  const logCounterRef = useRef<number>(1);
+
+  const [vehicleCounts, setVehicleCounts] = useState({
+    total: 0,
+    car: 0,
+    suv: 0,
+    bike: 0,
+    bus: 0,
+    truck: 0,
+  });
+  const vehicleCountsRef = useRef({
+    total: 0,
+    car: 0,
+    suv: 0,
+    bike: 0,
+    bus: 0,
+    truck: 0,
+  });
+
+  const [showFleetDrawer, setShowFleetDrawer] = useState<boolean>(false);
+  const playerLastSensorTimeRef = useRef<number>(0);
+
+  const handleToggleTraffic = useCallback(() => {
+    setTrafficPaused((prev) => {
+      const next = !prev;
+      trafficPausedRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleSpeedLimitChange = useCallback((val: number) => {
+    const clamped = Math.max(10, Math.min(80, val));
+    setTrafficSpeedLimit(clamped);
+    trafficSpeedLimitRef.current = clamped;
+  }, []);
+
+  const handleTogglePlayerGovernor = useCallback(() => {
+    setPlayerSpeedGoverned((prev) => {
+      const next = !prev;
+      playerSpeedGovernedRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleDownloadCSV = useCallback(() => {
+    const logs = sensorLogsRef.current;
+    if (logs.length === 0) {
+      alert('No piezoresistive sensor detections recorded yet. Allow vehicles to cross sensor plates or drive across them!');
+      return;
+    }
+
+    const headers = [
+      'Log ID',
+      'Timestamp (Local)',
+      'Timestamp (ISO)',
+      'Vehicle Name',
+      'Vehicle Type',
+      'Class Tag',
+      'Source',
+      'Speed (km/h)',
+      'Axle Weight (Tons)',
+      'Sensor Pressure (MPa)',
+      'Resistance Shift Delta R/R (%)',
+      'Sensor Location / Approach',
+    ];
+
+    const rows = logs.map((l) => [
+      l.id,
+      `"${l.time}"`,
+      `"${l.isoTime}"`,
+      `"${l.vehicleName}"`,
+      l.vehicleType.toUpperCase(),
+      `"${l.classTag}"`,
+      `"${l.source}"`,
+      l.speedKmh.toFixed(1),
+      l.weightTons.toFixed(2),
+      l.pressureMpa.toFixed(2),
+      `"${l.deltaROverR.toFixed(1)}%"`,
+      `"${l.approach}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `piezoresistive_traffic_sensor_log_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    sensorLogsRef.current = [];
+    setSensorLogs([]);
+    const resetCounts = { total: 0, car: 0, suv: 0, bike: 0, bus: 0, truck: 0 };
+    vehicleCountsRef.current = resetCounts;
+    setVehicleCounts(resetCounts);
+  }, []);
+
   const [missions, setMissions] = useState<MissionState[]>([
     { id: 'detect_car', title: 'Drive over sensor to detect Car (Class II)', completed: false },
     { id: 'detect_bike', title: 'Switch to Bike [V] and test Light Footprint (Class I)', completed: false },
@@ -205,101 +317,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     { id: 'cross_turn', title: 'Turn 90° into East-West Cross Avenue at a 4-way intersection', completed: false },
     { id: 'green_wave', title: 'Trigger Adaptive Green Wave preemption at 3 junctions', completed: false },
   ]);
-
-  // ── Sensor Continuous Telemetry & CSV Export States ──
-  const sensorLogsRef = useRef<SensorMeasurementLog[]>([]);
-  const lastSensorLogTimeMapRef = useRef<Map<string, number>>(new Map());
-  const sensorLogSeqRef = useRef<number>(0);
-  const simStartTimeRef = useRef<number>(Date.now());
-  const lastCountUpdateRef = useRef<number>(0);
-  const currentCountRef = useRef<number>(0);
-
-  const [telemetryLogsCount, setTelemetryLogsCount] = useState<number>(0);
-  const [showTelemetryModal, setShowTelemetryModal] = useState<boolean>(false);
-  const [telemetryFilter, setTelemetryFilter] = useState<'ALL' | 'USER' | 'AI'>('ALL');
-  const [csvExportNotice, setCsvExportNotice] = useState<string | null>(null);
-
-  const handleDownloadCsv = useCallback(() => {
-    const logs = sensorLogsRef.current;
-    if (!logs || logs.length === 0) {
-      alert('No sensor readings captured yet. Drive your vehicle or allow AI traffic to circulate over the sensor pads.');
-      return;
-    }
-
-    const headers = [
-      'Record_ID',
-      'Timestamp_ISO',
-      'Elapsed_Simulation_Time',
-      'Source',
-      'Vehicle_ID',
-      'Vehicle_Type',
-      'Vehicle_Class',
-      'Weight_Tons',
-      'Speed_KMH',
-      'Junction_ID',
-      'Junction_Name',
-      'Approach_Name',
-      'Sensor_Axis',
-      'Axle_Pressure_MPa',
-      'Resistance_Shift_Percent',
-      'Microstrain_ue',
-      'Signal_Voltage_mV',
-    ];
-
-    const rows = logs.map((log) => [
-      log.id,
-      `"${log.timestampIso}"`,
-      `"${log.elapsedSec}"`,
-      `"${log.source}"`,
-      `"${log.vehicleId.replace(/"/g, '""')}"`,
-      `"${log.vehicleType.replace(/"/g, '""')}"`,
-      `"${log.vehicleClass}"`,
-      log.weightTons,
-      log.speedKmh,
-      `"${log.junctionId}"`,
-      `"${log.junctionName.replace(/"/g, '""')}"`,
-      `"${log.approachName.replace(/"/g, '""')}"`,
-      `"${log.axis}"`,
-      log.pressureMpa,
-      log.resistanceShiftPct,
-      log.strainMicrostrain,
-      log.signalVoltageMv,
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const timeStr = new Date().toISOString().replace(/[:.]/g, '-');
-    link.href = url;
-    link.setAttribute('download', `piezoresistive_sensor_telemetry_${timeStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    setCsvExportNotice(`Exported ${logs.length} readings as CSV`);
-    setTimeout(() => setCsvExportNotice(null), 4000);
-  }, []);
-
-  const handleClearLogs = useCallback(() => {
-    sensorLogsRef.current = [];
-    lastSensorLogTimeMapRef.current.clear();
-    sensorLogSeqRef.current = 0;
-    currentCountRef.current = 0;
-    setTelemetryLogsCount(0);
-  }, []);
-
-  const displayedLogs = useMemo(() => {
-    const all = sensorLogsRef.current;
-    let filtered = all;
-    if (telemetryFilter === 'USER') {
-      filtered = all.filter((l) => l.source === 'USER');
-    } else if (telemetryFilter === 'AI') {
-      filtered = all.filter((l) => l.source === 'AI_TRAFFIC');
-    }
-    return filtered.slice(-150).reverse();
-  }, [showTelemetryModal, telemetryFilter, telemetryLogsCount]);
 
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const switchVehicleRef = useRef<(type: PlayerVehicleType) => void>(() => {});
@@ -331,6 +348,9 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         const nextMode = cameraModeRef.current === 'chase' ? 'hood' : cameraModeRef.current === 'hood' ? 'top' : 'chase';
         setCameraMode(nextMode);
         cameraModeRef.current = nextMode;
+      }
+      if (k === 'p') {
+        handleToggleTraffic();
       }
       if (k === 'r') {
         resetCar();
@@ -774,7 +794,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
     // ─── 8. 32 Active AI Traffic Vehicles Circulating Seamlessly ─────────────
     const aiTraffic: AITrafficVehicle[] = [];
-    let aiCounter = 0;
 
     function spawnAIVehicle(
       type: PlayerVehicleType,
@@ -783,94 +802,30 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       startAlong: number,
       direction: 1 | -1
     ) {
-      aiCounter++;
-      const aiId = `AI-${String(aiCounter).padStart(2, '0')}`;
-      const vGroup = new THREE.Group();
       const p = VEHICLE_PROFILES[type];
-      const aiName = `${aiId} (${p.name.split(' ')[0]})`;
-      const paintMat = new THREE.MeshStandardMaterial({ color: p.colorHex, metalness: 0.7, roughness: 0.25 });
-      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 });
-      const tMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-      const wheels: THREE.Mesh[] = [];
-
       const laneOffset = direction === 1 ? -LANE_OFFSET : LANE_OFFSET;
 
-      if (type === 'bike') {
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.5, 2.0), paintMat);
-        frame.position.y = 0.55;
-        vGroup.add(frame);
+      // Map PlayerVehicleType to Vehicles.ts type
+      const vehicleTypeMap: Record<PlayerVehicleType, string> = {
+        car: 'sedan', bike: 'bike', suv: 'suv', bus: 'bus', truck: 'truck',
+      };
+      const colorPalette = [
+        '#dc2626', '#2563eb', '#16a34a', '#d97706', '#7c3aed',
+        '#0891b2', '#be185d', '#ea580c', '#4f46e5', '#0f766e',
+      ];
+      const colorHex = colorPalette[Math.floor(Math.random() * colorPalette.length)];
 
-        const rider = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.5), glassMat);
-        rider.position.set(0, 0.95, -0.1);
-        vGroup.add(rider);
+      const inst = createDetailedVehicle({
+        id: `ai_${type}_${axis}_${roadCoord}_${startAlong}`,
+        type: vehicleTypeMap[type] as 'sedan' | 'suv' | 'bike' | 'bus' | 'truck',
+        color: colorHex,
+        speed: p.maxSpeedKmh / 3.6 * 0.6,
+        laneIndex: 0,
+        initialOffset: 0,
+        direction,
+      });
 
-        [0.85, -0.85].forEach((wz) => {
-          const wGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 16);
-          wGeo.rotateZ(Math.PI / 2);
-          const w = new THREE.Mesh(wGeo, tMat);
-          w.position.set(0, 0.35, wz);
-          vGroup.add(w);
-          wheels.push(w);
-        });
-      } else if (type === 'bus') {
-        const b = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 10.5), paintMat);
-        b.position.y = 1.6;
-        vGroup.add(b);
-
-        const g = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.9, 9.8), glassMat);
-        g.position.set(0, 2.0, 0);
-        vGroup.add(g);
-
-        [-1.32, 1.32].forEach((wx) => {
-          [3.8, -3.8].forEach((wz) => {
-            const wGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-            wGeo.rotateZ(Math.PI / 2);
-            const w = new THREE.Mesh(wGeo, tMat);
-            w.position.set(wx, 0.5, wz);
-            vGroup.add(w);
-            wheels.push(w);
-          });
-        });
-      } else if (type === 'truck') {
-        const cab = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.2, 2.2), paintMat);
-        cab.position.set(0, 1.4, 2.2);
-        vGroup.add(cab);
-
-        const cont = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 5.5), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-        cont.position.set(0, 1.7, -1.8);
-        vGroup.add(cont);
-
-        [-1.2, 1.2].forEach((wx) => {
-          [2.2, -1.5, -3.2].forEach((wz) => {
-            const wGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.28, 16);
-            wGeo.rotateZ(Math.PI / 2);
-            const w = new THREE.Mesh(wGeo, tMat);
-            w.position.set(wx, 0.44, wz);
-            vGroup.add(w);
-            wheels.push(w);
-          });
-        });
-      } else {
-        const isSuv = type === 'suv';
-        const b = new THREE.Mesh(new THREE.BoxGeometry(2.0, isSuv ? 0.8 : 0.65, 4.4), paintMat);
-        b.position.y = 0.55;
-        vGroup.add(b);
-
-        const c = new THREE.Mesh(new THREE.BoxGeometry(1.7, isSuv ? 0.7 : 0.6, 2.4), glassMat);
-        c.position.set(0, 1.15, -0.2);
-        vGroup.add(c);
-
-        [-1.0, 1.0].forEach((wx) => {
-          [-1.35, 1.35].forEach((wz) => {
-            const wGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.24, 16);
-            wGeo.rotateZ(Math.PI / 2);
-            const w = new THREE.Mesh(wGeo, tMat);
-            w.position.set(wx, 0.36, wz);
-            vGroup.add(w);
-            wheels.push(w);
-          });
-        });
-      }
+      const vGroup = inst.group;
 
       if (axis === 'NS') {
         vGroup.position.set(roadCoord + laneOffset, 0, startAlong);
@@ -882,19 +837,21 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
       scene.add(vGroup);
 
-      const targetSpeed = 13.0 + Math.random() * 7.0; // 48 to 72 km/h
+      const speedVariation = 0.85 + Math.random() * 0.3; // 85% to 115% nominal speed variation
+      const initialSpeed = (trafficSpeedLimitRef.current / 3.6) * speedVariation;
       aiTraffic.push({
-        id: aiId,
-        name: aiName,
         group: vGroup,
+        instance: inst,
         type,
         profile: p,
-        speed: targetSpeed,
+        speedVariation,
+        speed: initialSpeed,
         axis,
         direction,
         laneOffset,
         roadCoord,
-        wheels,
+        wheels: [],
+        lastSensorTriggerTime: 0,
       });
     }
 
@@ -947,6 +904,14 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     let playerMeshGroup: THREE.Group | null = null;
     let frontWheels: THREE.Group[] = [];
     let playerTires: THREE.Mesh[] = [];
+    let playerVehicleInstance: VehicleInstance | null = null;
+
+    const vehicleTypeToDetailedType: Record<PlayerVehicleType, 'sedan' | 'suv' | 'bike' | 'bus' | 'truck'> = {
+      car: 'sedan', bike: 'bike', suv: 'suv', bus: 'bus', truck: 'truck',
+    };
+    const vehiclePlayerColors: Record<PlayerVehicleType, string> = {
+      car: '#0284c7', bike: '#f59e0b', suv: '#d97706', bus: '#059669', truck: '#7c3aed',
+    };
 
     function buildPlayerMesh(vType: PlayerVehicleType) {
       if (playerMeshGroup) {
@@ -955,92 +920,31 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       frontWheels = [];
       playerTires = [];
 
-      playerMeshGroup = new THREE.Group();
-      const p = VEHICLE_PROFILES[vType];
-      const paintMat = new THREE.MeshStandardMaterial({ color: p.colorHex, metalness: 0.8, roughness: 0.2 });
-      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.05 });
-      const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+      // Use the high-fidelity detailed vehicle builder
+      const inst = createDetailedVehicle({
+        id: `player_${vType}`,
+        type: vehicleTypeToDetailedType[vType],
+        color: vehiclePlayerColors[vType],
+        speed: VEHICLE_PROFILES[vType].maxSpeedKmh / 3.6,
+        laneIndex: 0,
+        initialOffset: 0,
+        direction: 1,
+      });
 
-      if (vType === 'bike') {
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 2.1), paintMat);
-        frame.position.y = 0.55;
-        playerMeshGroup.add(frame);
+      playerVehicleInstance = inst;
+      playerMeshGroup = inst.group;
+      // Reset rotation — parent root controls orientation
+      playerMeshGroup.rotation.set(0, 0, 0);
 
-        const rider = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.75, 0.5), glassMat);
-        rider.position.set(0, 1.0, -0.1);
-        playerMeshGroup.add(rider);
-
-        [0.85, -0.85].forEach((wz, idx) => {
-          const wHolder = new THREE.Group();
-          wHolder.position.set(0, 0.35, wz);
-
-          const tGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.16, 20);
-          tGeo.rotateZ(Math.PI / 2);
-          const t = new THREE.Mesh(tGeo, tireMat);
-          wHolder.add(t);
-          playerTires.push(t);
-
-          playerMeshGroup!.add(wHolder);
-          if (idx === 0) frontWheels.push(wHolder);
-        });
-      } else if (vType === 'bus') {
-        const b = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 10.5), paintMat);
-        b.position.y = 1.6;
-        playerMeshGroup.add(b);
-
-        const g = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.9, 9.8), glassMat);
-        g.position.set(0, 2.0, 0);
-        playerMeshGroup.add(g);
-
-        [-1.32, 1.32].forEach((wx) => {
-          [3.8, -3.8].forEach((wz, idx) => {
-            const wHolder = new THREE.Group();
-            wHolder.position.set(wx, 0.5, wz);
-
-            const tGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.32, 20);
-            tGeo.rotateZ(Math.PI / 2);
-            const t = new THREE.Mesh(tGeo, tireMat);
-            wHolder.add(t);
-            playerTires.push(t);
-
-            playerMeshGroup!.add(wHolder);
-            if (idx === 0) frontWheels.push(wHolder);
-          });
-        });
-      } else {
-        const isTruck = vType === 'truck';
-        const isSuv = vType === 'suv';
-        const bodyH = isTruck ? 1.4 : isSuv ? 0.8 : 0.65;
-        const b = new THREE.Mesh(new THREE.BoxGeometry(isTruck ? 2.3 : 2.05, bodyH, 4.5), paintMat);
-        b.position.y = 0.55;
-        playerMeshGroup.add(b);
-
-        const c = new THREE.Mesh(new THREE.BoxGeometry(1.7, isSuv ? 0.7 : 0.6, 2.4), glassMat);
-        c.position.set(0, 1.15, -0.2);
-        playerMeshGroup.add(c);
-
-        if (isTruck) {
-          const cont = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.5, 5.0), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-          cont.position.set(0, 1.7, -1.8);
-          playerMeshGroup.add(cont);
+      // Extract front wheel groups for steering animation
+      playerMeshGroup.traverse((obj) => {
+        if (obj.name === 'wheel' && obj instanceof THREE.Group) {
+          // Front wheels are those with positive Z position relative to center
+          if (obj.position.z > 0.5) {
+            frontWheels.push(obj as THREE.Group);
+          }
         }
-
-        [-1.02, 1.02].forEach((wx) => {
-          [-1.35, 1.35].forEach((wz, idx) => {
-            const wHolder = new THREE.Group();
-            wHolder.position.set(wx, 0.36, wz);
-
-            const tGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.25, 20);
-            tGeo.rotateZ(Math.PI / 2);
-            const t = new THREE.Mesh(tGeo, tireMat);
-            wHolder.add(t);
-            playerTires.push(t);
-
-            playerMeshGroup!.add(wHolder);
-            if (idx === 1) frontWheels.push(wHolder);
-          });
-        });
-      }
+      });
 
       playerRoot.add(playerMeshGroup);
     }
@@ -1079,6 +983,8 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
     let lastTime = performance.now();
     let animId: number;
     let crashShakeTimer = 0;
+    let hasNewSensorLog = false;
+    let lastUiSyncTime = 0;
 
     let bannerTimeout: ReturnType<typeof setTimeout> | null = null;
     const triggerCrash = (collidedWith: string) => {
@@ -1123,7 +1029,10 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
 
       // Acceleration / Braking
       let isBraking = false;
-      const maxSpeedUnits = profile.maxSpeedKmh / 3.6;
+      let maxSpeedUnits = profile.maxSpeedKmh / 3.6;
+      if (playerSpeedGovernedRef.current) {
+        maxSpeedUnits = Math.min(maxSpeedUnits, trafficSpeedLimitRef.current / 3.6);
+      }
       if (isUp) {
         if (carSpeed < 0) {
           carSpeed += profile.brakeDecel * dt;
@@ -1240,9 +1149,19 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       if (playerRoot.position.z > HALF_SPAN_Z) playerRoot.position.z = -HALF_SPAN_Z + 15;
       else if (playerRoot.position.z < -HALF_SPAN_Z) playerRoot.position.z = HALF_SPAN_Z - 15;
 
-      playerTires.forEach((t) => {
-        t.rotation.x += (carSpeed / 0.36) * dt;
-      });
+      // Animate player vehicle wheels (traverse to find named wheel groups)
+      if (playerMeshGroup) {
+        playerMeshGroup.traverse((obj) => {
+          if (obj.name === 'wheel') {
+            // Spin each wheel group around its axle (X axis in local space)
+            obj.children.forEach((child) => {
+              if (child instanceof THREE.Mesh) {
+                child.rotation.x += (carSpeed / 0.36) * dt;
+              }
+            });
+          }
+        });
+      }
 
       const kmh = Math.abs(Math.round(carSpeed * 3.6));
       setSpeedKmh(kmh);
@@ -1291,8 +1210,18 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
       });
 
       // ─── 12. ANTI-CRASH DYNAMIC AI TRAFFIC NAVIGATION ──────────────────────
+      const isTrafficPaused = trafficPausedRef.current;
+      const currentSpeedLimit = trafficSpeedLimitRef.current;
+
       aiTraffic.forEach((ai) => {
-        let shouldStop = false;
+        let shouldStop = isTrafficPaused;
+
+        // Dynamic speed governed by user speed limit setting
+        if (!isTrafficPaused) {
+          ai.speed = (currentSpeedLimit / 3.6) * ai.speedVariation;
+        } else {
+          ai.speed = 0;
+        }
 
         // A) SAFE FOLLOWING DISTANCE: Check for vehicle ahead in the same lane
         let distToLead = 999.0;
@@ -1376,8 +1305,15 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             ai.group.position.x += move;
           }
 
-          ai.wheels.forEach((w) => {
-            w.rotation.x += (ai.speed / 0.36) * dt;
+          // Animate wheels by traversing named wheel groups
+          ai.group.traverse((obj) => {
+            if (obj.name === 'wheel') {
+              obj.children.forEach((child) => {
+                if (child instanceof THREE.Mesh) {
+                  child.rotation.x += (ai.speed / 0.36) * dt;
+                }
+              });
+            }
           });
         }
 
@@ -1390,16 +1326,47 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           else if (ai.group.position.x < -HALF_SPAN_X) ai.group.position.x = HALF_SPAN_X - 10;
         }
 
-        // D) PIEZORESISTIVE SENSOR ACTIVATION BY AI VEHICLES
+        // D) PIEZORESISTIVE SENSOR ACTIVATION BY AI VEHICLES & REAL-TIME LOGGING
         junctions.forEach((j) => {
           j.sensorPlates.forEach((sp) => {
-            if (ai.group.position.distanceTo(sp.center) < 3.5) {
+            if (ai.group.position.distanceTo(sp.center) < 3.8) {
               sp.mat.emissiveIntensity = 4.2;
               sp.mat.color.setHex(0x00e5ff);
               sp.pulseScale += 4.5 * dt;
               if (sp.pulseScale > 3.2) sp.pulseScale = 0.5;
               sp.pulseMat.opacity = Math.max(0.95 - sp.pulseScale * 0.25, 0.0);
-              sp.lastDetectedVehicleName = `${ai.profile.icon} ${ai.name}`;
+              sp.lastDetectedVehicleName = `${ai.profile.icon} ${ai.profile.name}`;
+
+              // Debounced recording of AI vehicle crossing (> 2.0s cooldown per AI vehicle)
+              if (currentTime - ai.lastSensorTriggerTime > 2000) {
+                ai.lastSensorTriggerTime = currentTime;
+                const aiKmh = Math.max(Math.round(ai.speed * 3.6), 14);
+                const dynamicInertia = 1.0 + (aiKmh / 120) * 0.4;
+                const press = parseFloat((ai.profile.basePressureMpa * dynamicInertia).toFixed(2));
+                const dr = parseFloat((-(press * 11.2)).toFixed(1));
+                const now = new Date();
+
+                const logEntry: SensorDetectionLog = {
+                  id: logCounterRef.current++,
+                  time: now.toLocaleTimeString(),
+                  isoTime: now.toISOString(),
+                  vehicleType: ai.type,
+                  vehicleName: ai.profile.name,
+                  classTag: ai.profile.classTag,
+                  speedKmh: aiKmh,
+                  weightTons: ai.profile.weightTons,
+                  pressureMpa: press,
+                  deltaROverR: dr,
+                  approach: `${j.id} (${sp.approachName})`,
+                  source: 'AI Traffic',
+                };
+
+                sensorLogsRef.current.unshift(logEntry);
+                if (sensorLogsRef.current.length > 500) sensorLogsRef.current.pop();
+                vehicleCountsRef.current[ai.type] += 1;
+                vehicleCountsRef.current.total += 1;
+                hasNewSensorLog = true;
+              }
 
               // Adaptive signal preemption (safely transitions through yellow phase)
               const isRedForAxis = (sp.axis === 'NS' && (j.currentPhase === 'EW_GREEN' || j.currentPhase === 'EW_YELLOW')) ||
@@ -1407,50 +1374,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
               if (isRedForAxis && j.tcuTimer > 2.0) {
                 // Shorten current phase so it clears to yellow quickly
                 j.tcuTimer = 1.0;
-              }
-
-              // Continuous Piezoresistive Telemetry Logging for AI traffic (~240ms interval per contact)
-              const now = performance.now();
-              const logKey = `${ai.id}_${sp.approachName}`;
-              const lastLog = lastSensorLogTimeMapRef.current.get(logKey) || 0;
-              if (now - lastLog >= 240) {
-                lastSensorLogTimeMapRef.current.set(logKey, now);
-
-                const aiSpeedKmh = parseFloat((ai.speed * 3.6).toFixed(1));
-                const dynamicInertia = 1.0 + (aiSpeedKmh / 120) * 0.7;
-                const pMpa = parseFloat((ai.profile.basePressureMpa * dynamicInertia * (0.95 + Math.random() * 0.1)).toFixed(2));
-                const rPct = parseFloat((-(pMpa * 11.2) * (0.98 + Math.random() * 0.04)).toFixed(1));
-                const strainMicrostrain = Math.round(pMpa * 285.5);
-                const signalVoltageMv = parseFloat((Math.abs(rPct) * 11.85).toFixed(1));
-
-                sensorLogSeqRef.current += 1;
-                const nowDate = new Date();
-                const elapsedSec = ((Date.now() - simStartTimeRef.current) / 1000).toFixed(1);
-
-                sensorLogsRef.current.push({
-                  id: sensorLogSeqRef.current,
-                  time: nowDate.toTimeString().split(' ')[0] + '.' + String(nowDate.getMilliseconds()).padStart(3, '0'),
-                  timestampIso: nowDate.toISOString(),
-                  elapsedSec: `+${elapsedSec}s`,
-                  source: 'AI_TRAFFIC',
-                  vehicleId: ai.name,
-                  vehicleType: ai.profile.name,
-                  vehicleClass: ai.profile.classTag,
-                  weightTons: ai.profile.weightTons,
-                  speedKmh: aiSpeedKmh,
-                  junctionId: j.id,
-                  junctionName: j.name,
-                  approachName: sp.approachName,
-                  axis: sp.axis,
-                  pressureMpa: pMpa,
-                  resistanceShiftPct: rPct,
-                  strainMicrostrain,
-                  signalVoltageMv,
-                });
-
-                if (sensorLogsRef.current.length > 10000) {
-                  sensorLogsRef.current.shift();
-                }
               }
             }
           });
@@ -1505,46 +1428,30 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             if (sp.pulseScale > 3.2) sp.pulseScale = 0.5;
             sp.pulseMat.opacity = Math.max(0.95 - sp.pulseScale * 0.25, 0.0);
 
-            // Continuous Piezoresistive Telemetry Logging for User Vehicle (~240ms interval per contact)
-            const now = performance.now();
-            const playerLogKey = `PLAYER_${sp.approachName}`;
-            const lastPlayerLog = lastSensorLogTimeMapRef.current.get(playerLogKey) || 0;
-            if (now - lastPlayerLog >= 240) {
-              lastSensorLogTimeMapRef.current.set(playerLogKey, now);
-
-              const pMpa = parseFloat(detectedP.toFixed(2));
-              const rPct = parseFloat(detectedDR.toFixed(1));
-              const strainMicrostrain = Math.round(pMpa * 285.5);
-              const signalVoltageMv = parseFloat((Math.abs(rPct) * 11.85).toFixed(1));
-
-              sensorLogSeqRef.current += 1;
-              const nowDate = new Date();
-              const elapsedSec = ((Date.now() - simStartTimeRef.current) / 1000).toFixed(1);
-
-              sensorLogsRef.current.push({
-                id: sensorLogSeqRef.current,
-                time: nowDate.toTimeString().split(' ')[0] + '.' + String(nowDate.getMilliseconds()).padStart(3, '0'),
-                timestampIso: nowDate.toISOString(),
-                elapsedSec: `+${elapsedSec}s`,
-                source: 'USER',
-                vehicleId: `User (${profile.name.split(' ')[0]})`,
-                vehicleType: profile.name,
-                vehicleClass: profile.classTag,
+            // Debounced recording of player crossing sensor (> 2.0s cooldown)
+            if (currentTime - playerLastSensorTimeRef.current > 2000) {
+              playerLastSensorTimeRef.current = currentTime;
+              const now = new Date();
+              const logEntry: SensorDetectionLog = {
+                id: logCounterRef.current++,
+                time: now.toLocaleTimeString(),
+                isoTime: now.toISOString(),
+                vehicleType: currentType,
+                vehicleName: profile.name,
+                classTag: profile.classTag,
+                speedKmh: kmh,
                 weightTons: profile.weightTons,
-                speedKmh: parseFloat(kmh.toFixed(1)),
-                junctionId: j.id,
-                junctionName: j.name,
-                approachName: sp.approachName,
-                axis: sp.axis,
-                pressureMpa: pMpa,
-                resistanceShiftPct: rPct,
-                strainMicrostrain,
-                signalVoltageMv,
-              });
+                pressureMpa: parseFloat(detectedP.toFixed(2)),
+                deltaROverR: parseFloat(detectedDR.toFixed(1)),
+                approach: `${j.id} (${sp.approachName})`,
+                source: 'Player Vehicle',
+              };
 
-              if (sensorLogsRef.current.length > 10000) {
-                sensorLogsRef.current.shift();
-              }
+              sensorLogsRef.current.unshift(logEntry);
+              if (sensorLogsRef.current.length > 500) sensorLogsRef.current.pop();
+              vehicleCountsRef.current[currentType] += 1;
+              vehicleCountsRef.current.total += 1;
+              hasNewSensorLog = true;
             }
 
             if (currentType === 'car') {
@@ -1580,6 +1487,14 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
         setDetectedVehicleName(activeDetectedName);
         setDetectedClassTag(activeClass);
         setDetectedWeight(activeW);
+      }
+
+      // Periodic batch sync to React state for Fleet Sensor Logs & Vehicle Counts (every 300ms)
+      if (hasNewSensorLog && currentTime - lastUiSyncTime > 300) {
+        lastUiSyncTime = currentTime;
+        hasNewSensorLog = false;
+        setSensorLogs([...sensorLogsRef.current.slice(0, 40)]);
+        setVehicleCounts({ ...vehicleCountsRef.current });
       }
 
       // Camera Follow
@@ -1676,16 +1591,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           ctx.restore();
         }
       }
-
-      // Throttled UI count sync (every ~200ms)
-      const nowMs = performance.now();
-      if (nowMs - lastCountUpdateRef.current > 200) {
-        lastCountUpdateRef.current = nowMs;
-        if (currentCountRef.current !== sensorLogSeqRef.current) {
-          currentCountRef.current = sensorLogSeqRef.current;
-          setTelemetryLogsCount(sensorLogSeqRef.current);
-        }
-      }
     };
 
     animId = requestAnimationFrame(animate);
@@ -1757,25 +1662,6 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
             <span className="pill-sub">{nextJunctionDist}m</span>
           </div>
 
-          {/* Continuous Sensor Readings Log & CSV Quick Download */}
-          <button
-            className="hud-btn-telemetry"
-            onClick={() => setShowTelemetryModal(true)}
-            title="Open Live Sensor Telemetry Stream"
-          >
-            <span className="hud-telemetry-dot" />
-            <span className="hud-telemetry-text">SENSORS</span>
-            <span className="hud-telemetry-badge">{telemetryLogsCount}</span>
-          </button>
-
-          <button
-            className="hud-btn-csv"
-            onClick={handleDownloadCsv}
-            title="Export All Piezoresistive Sensor Measurements to CSV"
-          >
-            📥 CSV
-          </button>
-
           <div className="hud-cam-toggles">
             <button
               className={`hud-cam-btn ${cameraMode === 'chase' ? 'hud-cam-btn--active' : ''}`}
@@ -1805,6 +1691,184 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           </button>
         </div>
       </header>
+
+      {/* Traffic Control & Fleet Sensor Telemetry Toolbar */}
+      <div className="simulation-traffic-bar">
+        {/* Stop / Resume Button */}
+        <button
+          className={`traffic-btn ${trafficPaused ? 'traffic-btn--resume' : 'traffic-btn--stop'}`}
+          onClick={handleToggleTraffic}
+          title={trafficPaused ? 'Resume AI Traffic Movement [P]' : 'Freeze / Stop all AI Traffic [P]'}
+        >
+          {trafficPaused ? '▶️ RESUME TRAFFIC' : '🛑 STOP VEHICLES'}
+        </button>
+
+        {/* Speed Limit Slider & Presets */}
+        <div className="traffic-speed-control">
+          <span className="speed-ctrl-label">
+            SPEED LIMIT: <strong>{trafficSpeedLimit} km/h</strong>
+          </span>
+          <input
+            type="range"
+            min={10}
+            max={70}
+            step={5}
+            value={trafficSpeedLimit}
+            onChange={(e) => handleSpeedLimitChange(Number(e.target.value))}
+            className="traffic-speed-slider"
+            title="Adjust city speed limit for all AI traffic vehicles"
+          />
+          <div className="speed-preset-chips">
+            <button
+              className={`preset-chip ${trafficSpeedLimit === 20 ? 'preset-chip--active' : ''}`}
+              onClick={() => handleSpeedLimitChange(20)}
+            >
+              20 Slow
+            </button>
+            <button
+              className={`preset-chip ${trafficSpeedLimit === 35 ? 'preset-chip--active' : ''}`}
+              onClick={() => handleSpeedLimitChange(35)}
+            >
+              35 Normal
+            </button>
+            <button
+              className={`preset-chip ${trafficSpeedLimit === 55 ? 'preset-chip--active' : ''}`}
+              onClick={() => handleSpeedLimitChange(55)}
+            >
+              55 Fast
+            </button>
+          </div>
+        </div>
+
+        {/* Speed Limiter toggle for Player */}
+        <label className="player-governor-toggle" title="Cap your vehicle top speed to the active traffic speed limit">
+          <input
+            type="checkbox"
+            checked={playerSpeedGoverned}
+            onChange={handleTogglePlayerGovernor}
+          />
+          <span>Cap My Speed</span>
+        </label>
+
+        {/* Real-Time Vehicle Sensor Count Tally */}
+        <div className="fleet-counts-group">
+          <div className="fleet-count-chip total" title="Total vehicles recorded crossing piezoresistive plates">
+            <span className="count-label">TOTAL PASSES</span>
+            <span className="count-val">{vehicleCounts.total}</span>
+          </div>
+          <div className="fleet-count-chip car" title="Sedan (Passenger Cars) detected">
+            <span className="count-label">🚗 SEDAN</span>
+            <span className="count-val">{vehicleCounts.car}</span>
+          </div>
+          <div className="fleet-count-chip suv" title="SUVs detected">
+            <span className="count-label">🚙 SUV</span>
+            <span className="count-val">{vehicleCounts.suv}</span>
+          </div>
+          <div className="fleet-count-chip bike" title="Bikes detected">
+            <span className="count-label">🏍️ BIKE</span>
+            <span className="count-val">{vehicleCounts.bike}</span>
+          </div>
+          <div className="fleet-count-chip bus" title="Buses detected">
+            <span className="count-label">🚌 BUS</span>
+            <span className="count-val">{vehicleCounts.bus}</span>
+          </div>
+          <div className="fleet-count-chip truck" title="Trucks detected">
+            <span className="count-label">🚚 TRUCK</span>
+            <span className="count-val">{vehicleCounts.truck}</span>
+          </div>
+        </div>
+
+        {/* CSV Download & Drawer Toggle */}
+        <div className="fleet-actions-group">
+          <button
+            className="fleet-btn-csv"
+            onClick={handleDownloadCSV}
+            title="Download recorded piezoresistive sensor detections as a CSV spreadsheet"
+          >
+            📥 CSV ({vehicleCounts.total})
+          </button>
+          <button
+            className={`fleet-btn-drawer ${showFleetDrawer ? 'fleet-btn-drawer--active' : ''}`}
+            onClick={() => setShowFleetDrawer(!showFleetDrawer)}
+            title="Toggle live recorded vehicle telemetry audit table"
+          >
+            {showFleetDrawer ? 'Hide Log ▲' : 'View Log ▼'}
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable Fleet Sensor Audit Log Drawer */}
+      {showFleetDrawer && (
+        <div className="simulation-fleet-drawer">
+          <div className="fleet-drawer-header">
+            <div className="drawer-title-row">
+              <span className="drawer-icon">📊</span>
+              <span className="drawer-title">PIEZORESISTIVE SENSOR FLEET AUDIT LOG</span>
+              <span className="drawer-count-badge">{sensorLogs.length} Records</span>
+            </div>
+            <div className="drawer-actions">
+              <button className="drawer-btn-download" onClick={handleDownloadCSV}>
+                📥 Download Full CSV
+              </button>
+              <button className="drawer-btn-clear" onClick={handleClearLogs}>
+                🗑️ Clear
+              </button>
+              <button className="drawer-btn-close" onClick={() => setShowFleetDrawer(false)}>
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <div className="fleet-table-container">
+            {sensorLogs.length === 0 ? (
+              <div className="fleet-empty-state">
+                No sensor hits recorded yet. Drive over piezoresistive plates or allow AI vehicles to cross junctions!
+              </div>
+            ) : (
+              <table className="fleet-log-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Time</th>
+                    <th>Vehicle</th>
+                    <th>Class</th>
+                    <th>Source</th>
+                    <th>Speed</th>
+                    <th>Weight</th>
+                    <th>Pressure</th>
+                    <th>ΔR/R</th>
+                    <th>Intersection & Approach</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sensorLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td>{log.id}</td>
+                      <td className="log-time">{log.time}</td>
+                      <td className="log-vname">
+                        <strong>{log.vehicleName}</strong>
+                      </td>
+                      <td>
+                        <span className="log-class-tag">{log.classTag}</span>
+                      </td>
+                      <td>
+                        <span className={`log-source-tag ${log.source === 'Player Vehicle' ? 'player' : 'ai'}`}>
+                          {log.source}
+                        </span>
+                      </td>
+                      <td className="log-num">{log.speedKmh} km/h</td>
+                      <td className="log-num">{log.weightTons} T</td>
+                      <td className="log-num log-pressure">{log.pressureMpa} MPa</td>
+                      <td className="log-num log-dr">{log.deltaROverR}%</td>
+                      <td className="log-approach">{log.approach}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mini City Tactical Radar (Compact Top-Left) */}
       <div className="simulation-hud-minimap">
@@ -1889,187 +1953,7 @@ export const VehicleSimulationView: React.FC<{ onReturnToHome: () => void }> = (
           <span className="tel-zone-lbl">ZONE:</span>
           <span className="tel-zone-val">{currentZoneName}</span>
         </div>
-
-        {/* Continuous Logging Counter & Quick Actions */}
-        <div className="telemetry-log-stats-row">
-          <span className="tel-log-pulse" />
-          <span className="tel-log-count-text">
-            {telemetryLogsCount > 0 ? `${telemetryLogsCount} readings logged` : 'Sensors active • 0 readings'}
-          </span>
-        </div>
-
-        <div className="telemetry-actions-row">
-          <button
-            className="tel-action-btn tel-action-btn--csv"
-            onClick={handleDownloadCsv}
-            title="Download CSV of all vehicle readings"
-          >
-            📥 CSV
-          </button>
-          <button
-            className="tel-action-btn tel-action-btn--view"
-            onClick={() => setShowTelemetryModal(true)}
-            title="Open Live Sensor Stream Log"
-          >
-            📊 View Log ({telemetryLogsCount})
-          </button>
-        </div>
       </div>
-
-      {/* CSV Export Success Toast */}
-      {csvExportNotice && (
-        <div className="sim-toast-notice">
-          ✓ {csvExportNotice}
-        </div>
-      )}
-
-      {/* Full Real-Time Sensor Telemetry Modal & Table */}
-      {showTelemetryModal && (
-        <div className="telemetry-modal-backdrop" onClick={() => setShowTelemetryModal(false)}>
-          <div className="telemetry-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="telemetry-modal-header">
-              <div className="modal-title-group">
-                <span className="modal-live-dot" />
-                <div>
-                  <h3>Continuous Piezoresistive Sensor Measurements</h3>
-                  <p>Real-time dynamic axle load, resistance shift, and microstrain recorded across all 25 intersections</p>
-                </div>
-              </div>
-              <div className="modal-header-actions">
-                <button className="modal-btn-download" onClick={handleDownloadCsv}>
-                  📥 Download CSV ({telemetryLogsCount})
-                </button>
-                <button className="modal-btn-clear" onClick={handleClearLogs} title="Clear recorded data">
-                  🗑️ Clear
-                </button>
-                <button className="modal-btn-close" onClick={() => setShowTelemetryModal(false)} title="Close Inspector">
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* KPI Stat Cards */}
-            <div className="telemetry-kpi-bar">
-              <div className="kpi-card">
-                <span className="kpi-lbl">TOTAL MEASUREMENTS</span>
-                <span className="kpi-val">{telemetryLogsCount}</span>
-              </div>
-              <div className="kpi-card">
-                <span className="kpi-lbl">USER VEHICLE PASSES</span>
-                <span className="kpi-val">
-                  {sensorLogsRef.current.filter((l) => l.source === 'USER').length}
-                </span>
-              </div>
-              <div className="kpi-card">
-                <span className="kpi-lbl">AI FLEET PASSES</span>
-                <span className="kpi-val">
-                  {sensorLogsRef.current.filter((l) => l.source === 'AI_TRAFFIC').length}
-                </span>
-              </div>
-              <div className="kpi-card">
-                <span className="kpi-lbl">PEAK AXLE STRESS</span>
-                <span className="kpi-val text-blue">
-                  {sensorLogsRef.current.length > 0
-                    ? Math.max(...sensorLogsRef.current.map((l) => l.pressureMpa)).toFixed(2) + ' MPa'
-                    : '0.00 MPa'}
-                </span>
-              </div>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="telemetry-filter-bar">
-              <div className="filter-tabs">
-                <button
-                  className={`filter-tab ${telemetryFilter === 'ALL' ? 'filter-tab--active' : ''}`}
-                  onClick={() => setTelemetryFilter('ALL')}
-                >
-                  All Vehicles ({sensorLogsRef.current.length})
-                </button>
-                <button
-                  className={`filter-tab ${telemetryFilter === 'USER' ? 'filter-tab--active' : ''}`}
-                  onClick={() => setTelemetryFilter('USER')}
-                >
-                  🚗 User Vehicle ({sensorLogsRef.current.filter((l) => l.source === 'USER').length})
-                </button>
-                <button
-                  className={`filter-tab ${telemetryFilter === 'AI' ? 'filter-tab--active' : ''}`}
-                  onClick={() => setTelemetryFilter('AI')}
-                >
-                  🤖 AI Traffic Fleet ({sensorLogsRef.current.filter((l) => l.source === 'AI_TRAFFIC').length})
-                </button>
-              </div>
-              <span className="filter-note">
-                Showing latest {displayedLogs.length} entries (real-time stream)
-              </span>
-            </div>
-
-            {/* Live Data Table */}
-            <div className="telemetry-table-container">
-              {displayedLogs.length === 0 ? (
-                <div className="telemetry-empty-state">
-                  <span className="empty-icon">📡</span>
-                  <h4>Waiting for Sensor Data...</h4>
-                  <p>Drive your vehicle over any sensor pad, or let AI traffic pass through intersections to capture data.</p>
-                </div>
-              ) : (
-                <table className="telemetry-data-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Time</th>
-                      <th>Source</th>
-                      <th>Vehicle</th>
-                      <th>Class</th>
-                      <th>Weight</th>
-                      <th>Speed</th>
-                      <th>Junction & Approach</th>
-                      <th>Axle Stress</th>
-                      <th>ΔR/R₀</th>
-                      <th>Voltage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedLogs.map((log) => (
-                      <tr key={log.id} className={log.source === 'USER' ? 'row-user' : 'row-ai'}>
-                        <td className="col-id">#{log.id}</td>
-                        <td className="col-time">{log.time}</td>
-                        <td>
-                          <span className={`source-pill ${log.source === 'USER' ? 'source-pill--user' : 'source-pill--ai'}`}>
-                            {log.source === 'USER' ? 'USER' : 'AI'}
-                          </span>
-                        </td>
-                        <td className="col-vname">{log.vehicleId}</td>
-                        <td><span className="class-tag">{log.vehicleClass}</span></td>
-                        <td className="col-num">{log.weightTons} T</td>
-                        <td className="col-num">{log.speedKmh} km/h</td>
-                        <td className="col-approach">{log.approachName}</td>
-                        <td className="col-stress">{log.pressureMpa} MPa</td>
-                        <td className="col-res">{log.resistanceShiftPct}%</td>
-                        <td className="col-volt">{log.signalVoltageMv} mV</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="telemetry-modal-footer">
-              <span className="footer-status">
-                <span className="status-dot" /> Sensor Network: 25 Intersections × 4 Approaches = 100 Piezoresistive Plates Online
-              </span>
-              <div className="footer-actions">
-                <button className="modal-btn-download-secondary" onClick={handleDownloadCsv}>
-                  📥 Export to CSV
-                </button>
-                <button className="modal-btn-close-secondary" onClick={() => setShowTelemetryModal(false)}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

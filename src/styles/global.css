@@ -400,8 +400,20 @@ button {
 .planning-panel,
 .forecasting-panel,
 .optimization-panel,
-.transform-panel-root {
-  pointer-events: auto;
+.transform-panel-root,
+.modal-backdrop,
+.modal-backdrop *,
+.modal-card,
+.modal-card *,
+.plan-specs-modal,
+.plan-specs-modal *,
+.plan-selection-bar,
+.plan-selection-bar *,
+.plan-selection-bar-minimized-wrap,
+.plan-selection-bar-minimized-wrap *,
+.timeline-minimized-floating,
+.timeline-minimized-floating * {
+  pointer-events: auto !important;
 }
 
 /* ── Minimal Floating Header ───────────────────────────────── */
@@ -5057,31 +5069,34 @@ button {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 2000;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   animation: fadeIn 0.2s ease-out;
+  pointer-events: auto !important;
 }
 
 .modal-card {
   background: #ffffff;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #dadce0;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
-  max-width: 840px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35), 0 10px 24px rgba(0, 0, 0, 0.15);
+  max-width: 860px;
   width: 100%;
-  max-height: 85vh;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   color: #202124;
   animation: modalScaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2001;
+  z-index: 10000;
+  pointer-events: auto !important;
+  position: relative;
 }
 
 @keyframes modalScaleUp {
@@ -5093,43 +5108,49 @@ button {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 18px 24px 14px;
+  padding: 20px 24px 16px;
   border-bottom: 1px solid #e8eaed;
   background: #ffffff;
+  pointer-events: auto !important;
 }
 
 .modal-card__title {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: #202124;
   margin-top: 4px;
 }
 
 .modal-card__subtitle {
-  font-size: 12px;
+  font-size: 12.5px;
   color: #5f6368;
   margin-top: 2px;
+  line-height: 1.45;
 }
 
 .modal-card__close-btn {
   background: #f1f3f4;
   border: 1px solid #dadce0;
   color: #5f6368;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
+  pointer-events: auto !important;
+  flex-shrink: 0;
 }
 
 .modal-card__close-btn:hover {
-  background: #e8eaed;
-  color: #202124;
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+  transform: scale(1.08);
 }
 
 .modal-card__body {
@@ -5139,6 +5160,8 @@ button {
   flex-direction: column;
   gap: 18px;
   background: #ffffff;
+  pointer-events: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Modal Specs Styles ─────────────────────────────────────── */
@@ -6836,12 +6859,15 @@ button {
   transform: translateX(-50%);
   z-index: 95;
   animation: fadeInDown 0.2s ease-out;
+  pointer-events: auto !important;
 }
 
 .plan-selection-bar-restore-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  pointer-events: auto !important;
+  cursor: pointer;
 }
 
 .timeline-minimized-floating {
@@ -6851,6 +6877,12 @@ button {
   transform: translateX(-50%);
   z-index: 100;
   animation: fadeInUp 0.25s ease-out;
+  pointer-events: auto !important;
+}
+
+.timeline-minimized-pill {
+  cursor: pointer;
+  pointer-events: auto !important;
 }
 
 .timeline-minimized-pill {

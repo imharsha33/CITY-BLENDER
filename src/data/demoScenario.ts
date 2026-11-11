@@ -54,27 +54,27 @@ const trees: TreeConfig[] = [
 // ─── Vehicles ─────────────────────────────────────────────────────────────────
 const vehicles: VehicleConfig[] = [
   // Southbound (+Z, Lane 0: outer slow lane in 4-lane, lane 0 in 1-lane)
-  { id: 'v1', type: 'car',   color: '#c0392b', speed: 0.16, laneIndex: 0, direction:  1, initialOffset: -80 },
-  { id: 'v2', type: 'car',   color: '#2980b9', speed: 0.15, laneIndex: 0, direction:  1, initialOffset: -20 },
+  { id: 'v1', type: 'sedan', color: '#c0392b', speed: 0.16, laneIndex: 0, direction:  1, initialOffset: -80 },
+  { id: 'v2', type: 'suv',   color: '#2980b9', speed: 0.15, laneIndex: 0, direction:  1, initialOffset: -20 },
   { id: 'v3', type: 'bus',   color: '#f39c12', speed: 0.11, laneIndex: 0, direction:  1, initialOffset:  45 },
 
   // Northbound (-Z, Lane 1: in 1-lane, Lane 3: outer slow lane in 4-lane)
-  { id: 'v4', type: 'car',   color: '#27ae60', speed: 0.16, laneIndex: 1, direction: -1, initialOffset:  70 },
+  { id: 'v4', type: 'sedan', color: '#27ae60', speed: 0.16, laneIndex: 1, direction: -1, initialOffset:  70 },
   { id: 'v5', type: 'truck', color: '#7f8c8d', speed: 0.10, laneIndex: 1, direction: -1, initialOffset:  10 },
-  { id: 'v6', type: 'car',   color: '#8e44ad', speed: 0.15, laneIndex: 1, direction: -1, initialOffset: -50 },
+  { id: 'v6', type: 'bike',  color: '#8e44ad', speed: 0.18, laneIndex: 1, direction: -1, initialOffset: -50 },
 
   // Post-upgrade additional traffic:
   // Southbound Fast Lane (Lane 1, X = -2.6m)
-  { id: 'v7',  type: 'car',  color: '#e74c3c', speed: 0.19, laneIndex: 1, direction:  1, initialOffset: -60 },
-  { id: 'v8',  type: 'car',  color: '#3498db', speed: 0.18, laneIndex: 1, direction:  1, initialOffset:  15 },
+  { id: 'v7',  type: 'suv',   color: '#e74c3c', speed: 0.19, laneIndex: 1, direction:  1, initialOffset: -60 },
+  { id: 'v8',  type: 'sedan', color: '#3498db', speed: 0.18, laneIndex: 1, direction:  1, initialOffset:  15 },
 
   // Northbound Fast Lane (Lane 2, X = +2.6m)
-  { id: 'v10', type: 'car',  color: '#1abc9c', speed: 0.19, laneIndex: 2, direction: -1, initialOffset: -40 },
-  { id: 'v11', type: 'car',  color: '#9b59b6', speed: 0.17, laneIndex: 2, direction: -1, initialOffset:  35 },
+  { id: 'v10', type: 'bike',  color: '#1abc9c', speed: 0.20, laneIndex: 2, direction: -1, initialOffset: -40 },
+  { id: 'v11', type: 'suv',   color: '#9b59b6', speed: 0.17, laneIndex: 2, direction: -1, initialOffset:  35 },
 
   // Northbound Additional Heavy / Slow Traffic (Lane 3, X = +5.5m)
-  { id: 'v9',  type: 'bus',  color: '#e67e22', speed: 0.11, laneIndex: 3, direction: -1, initialOffset:  90 },
-  { id: 'v12', type: 'truck',color: '#95a5a6', speed: 0.10, laneIndex: 3, direction: -1, initialOffset: -20 },
+  { id: 'v9',  type: 'bus',   color: '#e67e22', speed: 0.11, laneIndex: 3, direction: -1, initialOffset:  90 },
+  { id: 'v12', type: 'truck', color: '#95a5a6', speed: 0.10, laneIndex: 3, direction: -1, initialOffset: -20 },
 ];
 
 // ─── Street Lights ────────────────────────────────────────────────────────────

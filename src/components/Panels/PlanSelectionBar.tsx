@@ -9,7 +9,7 @@ interface PlanSelectionBarProps {
   isDemoMode?: boolean;
 }
 
-const PLANS: DemoPlanType[] = ['four_lane', 'flyover', 'ring_road'];
+const PLANS: DemoPlanType[] = ['four_lane', 'flyover', 'ring_road', 'combined'];
 
 export const PlanSelectionBar: React.FC<PlanSelectionBarProps> = ({
   currentPlan,

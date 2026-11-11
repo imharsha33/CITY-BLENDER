@@ -123,7 +123,7 @@ export interface BuildingConfig {
 
 export interface VehicleConfig {
   id: string;
-  type: 'car' | 'bus' | 'truck';
+  type: 'car' | 'sedan' | 'suv' | 'bus' | 'truck' | 'motorcycle' | 'bike';
   color: string;
   speed: number;
   laneIndex: number;
