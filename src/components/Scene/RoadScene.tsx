@@ -19,6 +19,8 @@ import type { TransformationState, ComparisonMode, ConstructionPhaseDefinition }
 import type { ForecastResponse } from '../../types/forecasting';
 import type { DemoPlanType } from '../../data/planScenarios';
 import type { SignalJunctionTelemetry } from './SmartSignalJunction';
+import type { RealPlace } from '../../data/cityPlaces';
+import type { RouteCalculationResult } from '../../engine/RealRouteEngine';
 
 export interface FocusTarget {
   lat: number;
@@ -65,6 +67,13 @@ interface RoadSceneProps {
   roadSensorTrigger?: { approach?: 'north' | 'east' | 'south' | 'west'; timestamp: number } | null;
   roadSensorAdaptiveMode?: boolean;
   onRoadSensorTelemetry?: (telemetry: SignalJunctionTelemetry) => void;
+  // Route planning & glowing blue line props
+  routePlaces?: RealPlace[];
+  activeRoute?: RouteCalculationResult | null;
+  selectedFromPlaceId?: string | null;
+  selectedToPlaceId?: string | null;
+  focusRouteTrigger?: number;
+  onSelectRoutePlace?: (place: RealPlace) => void;
 }
 
 // Cache WebGL support globally to avoid creating throwaway contexts on every render frame
@@ -117,6 +126,12 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
   roadSensorTrigger,
   roadSensorAdaptiveMode,
   onRoadSensorTelemetry,
+  routePlaces,
+  activeRoute,
+  selectedFromPlaceId,
+  selectedToPlaceId,
+  focusRouteTrigger,
+  onSelectRoutePlace,
 }) => {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const managerRef = useRef<SceneManager | null>(null);
@@ -191,8 +206,10 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
   // Sync real location data
   useEffect(() => {
     if (!managerRef.current || !realLocationData) return;
-    managerRef.current.loadRealLocation(realLocationData);
-  }, [realLocationData]);
+    if (mode === 'real_location') {
+      managerRef.current.loadRealLocation(realLocationData);
+    }
+  }, [realLocationData, mode]);
 
   // Sync layer visibility
   useEffect(() => {
@@ -229,6 +246,24 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
     if (!managerRef.current) return;
     managerRef.current.setPlanningViewState(planningViewState || 'PROPOSED');
   }, [planningViewState]);
+
+  // Sync real places & major traffic circles
+  useEffect(() => {
+    if (!managerRef.current || !routePlaces) return;
+    managerRef.current.setRoutePlaces(routePlaces, selectedFromPlaceId, selectedToPlaceId);
+  }, [routePlaces, selectedFromPlaceId, selectedToPlaceId]);
+
+  // Sync active route (glowing blue line)
+  useEffect(() => {
+    if (!managerRef.current) return;
+    managerRef.current.setActiveRoute(activeRoute || null);
+  }, [activeRoute]);
+
+  // Focus active route in 3D camera
+  useEffect(() => {
+    if (!managerRef.current || !focusRouteTrigger) return;
+    managerRef.current.focusActiveRoute();
+  }, [focusRouteTrigger]);
 
   // Sync camera focus on target element
   useEffect(() => {
@@ -349,12 +384,13 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
     return () => clearInterval(interval);
   }, [onRoadSensorTelemetry]);
 
-  // Click interaction for issues, roads & junctions
+  // Click interaction for issues, roads, junctions & real places
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!managerRef.current) return;
     const hit = managerRef.current.handleCanvasClick(e.clientX, e.clientY);
     if (hit) {
-      if (hit.issue && onSelectIssue) onSelectIssue(hit.issue);
+      if (hit.place && onSelectRoutePlace) onSelectRoutePlace(hit.place);
+      else if (hit.issue && onSelectIssue) onSelectIssue(hit.issue);
       else if (hit.road && onSelectRoad) onSelectRoad(hit.road);
       else if (hit.junction && onSelectJunction) onSelectJunction(hit.junction);
     }
@@ -380,7 +416,7 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
       <canvas
         ref={canvasRef}
         className="road-scene-canvas"
-        style={{ width: '100%', height: '100%', display: 'block', cursor: analysisData ? 'pointer' : 'default' }}
+        style={{ width: '100%', height: '100%', display: 'block', cursor: analysisData ? 'pointer' : 'default', pointerEvents: 'auto', touchAction: 'none' }}
         onClick={handleCanvasClick}
       />
 

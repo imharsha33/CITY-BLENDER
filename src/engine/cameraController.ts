@@ -37,7 +37,7 @@ const CAMERA_PRESETS: Record<string, CameraTarget> = {
 export class CameraController {
   private camera: THREE.PerspectiveCamera;
   private currentTarget: CameraTarget;
-  private lerpSpeed = 0.05;
+  private lerpSpeed = 0.1;
   private _mode: CameraMode = 'overview';
 
   // Interactive navigation state
@@ -226,10 +226,10 @@ export class CameraController {
     const centerZ = bounds ? bounds.centerZ : 0;
     const maxSpan = bounds ? bounds.maxSpan : 600;
 
-    // True immersive 3D isometric perspective
-    const altitude = Math.max(160, Math.min(480, maxSpan * 0.25));
-    const offsetZ = altitude * 0.95;
-    const offsetX = -altitude * 0.45;
+    // True immersive 3D isometric perspective — altitude scaled to city span
+    const altitude = Math.max(160, Math.min(2400, maxSpan * 0.5));
+    const offsetZ = altitude * 0.85;
+    const offsetX = -altitude * 0.42;
 
     const destPos = new THREE.Vector3(centerX + offsetX, altitude, centerZ + offsetZ);
     const destLookAt = new THREE.Vector3(centerX, 0, centerZ);
@@ -250,8 +250,8 @@ export class CameraController {
     const centerZ = bounds ? bounds.centerZ : 0;
     const maxSpan = bounds ? bounds.maxSpan : 600;
 
-    const altitude = Math.max(180, Math.min(460, maxSpan * 0.28));
-    const offsetZ = altitude * 0.95;
+    const altitude = Math.max(180, Math.min(2400, maxSpan * 0.5));
+    const offsetZ = altitude * 0.85;
 
     const destPos = new THREE.Vector3(centerX - altitude * 0.5, altitude, centerZ + offsetZ);
     const destLookAt = new THREE.Vector3(centerX, 0, centerZ);
@@ -390,7 +390,7 @@ export class CameraController {
 
     // PAN: Right Mouse Button or Shift + Left Mouse Button
     if (this.pointerButton === 2 || (this.pointerButton === 0 && e.shiftKey)) {
-      const panSpeed = (this.spherical.radius / 1000) * 0.85;
+      const panSpeed = (this.spherical.radius / 1000) * 1.5;
 
       // Get camera view vectors projected onto XZ ground plane
       const forward = new THREE.Vector3();
@@ -436,7 +436,7 @@ export class CameraController {
     this.isFlying = false;
     this.isCinematicOrbit = false;
 
-    const zoomSpeed = 0.0015;
+    const zoomSpeed = 0.0012;
     const factor = Math.exp(e.deltaY * zoomSpeed);
 
     this.spherical.radius = Math.max(25, Math.min(3500, this.spherical.radius * factor));
