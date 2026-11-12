@@ -47,6 +47,9 @@ import type {
   ComparisonMode,
 } from '../types/transformation';
 import type { ForecastResponse } from '../types/forecasting';
+import { RoutePathVisualizer } from '../components/Scene/RoutePathVisualizer';
+import type { RealPlace } from '../data/cityPlaces';
+import type { RouteCalculationResult } from './RealRouteEngine';
 
 
 export class SceneManager {
@@ -61,6 +64,7 @@ export class SceneManager {
   private realLocationMgr: RealLocationManager = new RealLocationManager();
   private analysisVis:     AnalysisVisualizer = new AnalysisVisualizer();
   private proposedMgr:     ProposedInfrastructureManager = new ProposedInfrastructureManager();
+  public  routeVis:        RoutePathVisualizer = new RoutePathVisualizer();
   public  transformMgr!:   TransformationManager;
   private currentMode:     SceneMode = 'demo';
 
@@ -134,6 +138,9 @@ export class SceneManager {
 
     // ── Phase 4 Proposed Infrastructure Root ──────────────────────────────────
     this.scene.add(this.proposedMgr.rootGroup);
+
+    // ── Phase 8 Route Path & Places Visualizer Root ─────────────────────────
+    this.scene.add(this.routeVis.rootGroup);
 
     // ── Phase 7 Transformation Manager Root ──────────────────────────────────
     this.transformMgr = new TransformationManager(this.scene, this.proposedMgr, this.camCtrl);
@@ -648,11 +655,32 @@ export class SceneManager {
     this.camCtrl.focusElement(worldPos, viewType, 1.6);
   }
 
+  // ── Route & Major Traffic Circle Planning ──────────────────────────────────
+  setRoutePlaces(places: RealPlace[], fromId: string | null = null, toId: string | null = null): void {
+    if (!this.realLocationMgr.coordSystem) return;
+    this.routeVis.renderPlaces(places, this.realLocationMgr.coordSystem, fromId, toId);
+  }
+
+  setActiveRoute(route: RouteCalculationResult | null): void {
+    if (route) {
+      this.routeVis.renderRoute(route);
+    } else {
+      this.routeVis.clearRoute();
+    }
+  }
+
+  focusActiveRoute(): void {
+    const bounds = this.routeVis.getRouteBounds();
+    if (!bounds) return;
+    this.camCtrl.fitToBounds(bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ, 1.8);
+  }
+
   // ── Raycasting Interactivity ────────────────────────────────────────────────
   handleCanvasClick(
     clientX: number,
     clientY: number
   ): {
+    place?: RealPlace;
     issue?: InfrastructureIssue;
     road?: RoadAnalysisItem | RoadSegmentGeo;
     junction?: JunctionAnalysisItem;
@@ -662,6 +690,21 @@ export class SceneManager {
     this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // 0. Raycast against route places / location pins first
+    const placeObjects = this.routeVis.getInteractivePlaceObjects();
+    if (placeObjects.length > 0) {
+      const placeIntersects = this.raycaster.intersectObjects(placeObjects, true);
+      if (placeIntersects.length > 0) {
+        let target: THREE.Object3D | null = placeIntersects[0].object;
+        while (target && !target.userData?.place && target.parent) {
+          target = target.parent;
+        }
+        if (target?.userData?.place) {
+          return { place: target.userData.place as RealPlace };
+        }
+      }
+    }
 
     // 1. Raycast against analysis interactive objects first (if analysis mode is active)
     if (this.analysisVis.interactiveObjects.length > 0) {
@@ -1187,6 +1230,7 @@ export class SceneManager {
       if (this.currentMode === 'real_location') {
         this.analysisVis.updateAnimation(time);
         this.realLocationMgr.update(delta);
+        this.routeVis.update(delta, time);
       }
 
       // Update demo vehicles when demo scene is active

@@ -50,6 +50,10 @@ import type { DemoPlanType } from './data/planScenarios';
 import { SCENARIOS } from './data/planScenarios';
 import { ProjectInfoSection } from './components/UI/ProjectInfoSection';
 import { VehicleSimulationView } from './components/Simulation/VehicleSimulationView';
+import { RouteNavigationPanel } from './components/Panels/RouteNavigationPanel';
+import { getPlacesForCity, type RealPlace } from './data/cityPlaces';
+import { RealRouteEngine, type RouteCalculationResult } from './engine/RealRouteEngine';
+import { GeoCoordinateSystem } from './engine/GeoCoordinateSystem';
 import './styles/global.css';
 
 const NORMAL_SPEED = 0.00035; // ~48s full run
@@ -207,6 +211,15 @@ export default function App() {
     preset: 'whole_city' | 'corridor' | 'intervention' | 'street' | 'cinematic';
     timestamp: number;
   } | null>(null);
+
+  // Route Navigation Mode States (Live Real Places & A* Pathfinding)
+  const [routePlaces, setRoutePlaces] = useState<RealPlace[]>([]);
+  const [routeFromPlaceId, setRouteFromPlaceId] = useState<string>('');
+  const [routeToPlaceId, setRouteToPlaceId] = useState<string>('');
+  const [activeRoute, setActiveRoute] = useState<RouteCalculationResult | null>(null);
+  const [focusRouteTrigger, setFocusRouteTrigger] = useState<number>(0);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState<boolean>(false);
+  const routeEngineRef = useRef<RealRouteEngine | null>(null);
 
   const rafRef       = useRef<number>(0);
   const progressRef  = useRef(0);
@@ -440,6 +453,87 @@ export default function App() {
       handleSelectLocation(defaultLoc);
     }
   }, [mainNavMode, realLocationData, isSearching, handleSelectLocation]);
+
+  // Sync route places & graph pathfinding engine whenever real location data updates
+  useEffect(() => {
+    const cityName = realLocationData?.locationName || 'Vijayawada';
+    const places = getPlacesForCity(cityName);
+    setRoutePlaces(places);
+    if (places.length >= 2) {
+      setRouteFromPlaceId(places[0].id);
+      setRouteToPlaceId(places[1].id);
+    } else {
+      setRouteFromPlaceId('');
+      setRouteToPlaceId('');
+    }
+
+    if (realLocationData && realLocationData.roads && realLocationData.center) {
+      const coordSystem = new GeoCoordinateSystem({
+        latitude: realLocationData.center[0],
+        longitude: realLocationData.center[1],
+      });
+      const engine = new RealRouteEngine(realLocationData.roads, coordSystem);
+      routeEngineRef.current = engine;
+    } else {
+      routeEngineRef.current = null;
+    }
+  }, [realLocationData]);
+
+  // Compute live route path between selected from/to places
+  useEffect(() => {
+    if (mainNavMode !== 'route' || !routeFromPlaceId || !routeToPlaceId) {
+      setActiveRoute(null);
+      return;
+    }
+
+    const fromPlace = routePlaces.find((p) => p.id === routeFromPlaceId);
+    const toPlace = routePlaces.find((p) => p.id === routeToPlaceId);
+    if (!fromPlace || !toPlace || !routeEngineRef.current) {
+      setActiveRoute(null);
+      return;
+    }
+
+    setIsCalculatingRoute(true);
+    const timer = setTimeout(() => {
+      try {
+        const route = routeEngineRef.current?.calculateRoute(
+          fromPlace.coordinate,
+          toPlace.coordinate,
+          fromPlace.name,
+          toPlace.name
+        );
+        setActiveRoute(route || null);
+        if (route) {
+          setFocusRouteTrigger(Date.now());
+        }
+      } catch (err) {
+        console.warn('Failed to calculate route:', err);
+        setActiveRoute(null);
+      } finally {
+        setIsCalculatingRoute(false);
+      }
+    }, 10);
+
+    return () => clearTimeout(timer);
+  }, [mainNavMode, routeFromPlaceId, routeToPlaceId, routePlaces, realLocationData]);
+
+  const handleSelectRoutePlace = useCallback((place: RealPlace) => {
+    if (!routeFromPlaceId) {
+      setRouteFromPlaceId(place.id);
+    } else if (routeFromPlaceId === place.id) {
+      // already from
+    } else {
+      setRouteToPlaceId(place.id);
+    }
+  }, [routeFromPlaceId]);
+
+  const handleSwapRoutePlaces = useCallback(() => {
+    setRouteFromPlaceId((prevFrom) => {
+      const prevTo = routeToPlaceId;
+      setRouteToPlaceId(prevFrom);
+      return prevTo;
+    });
+  }, [routeToPlaceId]);
 
   // Phase 3: Run Intelligent Infrastructure Problem Analysis
   // Directly sends current authoritative realLocationData (OSM or User Import) for 100% parity
@@ -1121,6 +1215,12 @@ export default function App() {
                 roadSensorTrigger={roadSensorTrigger}
                 roadSensorAdaptiveMode={roadSensorAdaptiveMode}
                 onRoadSensorTelemetry={setRoadSensorTelemetry}
+                routePlaces={mainNavMode === 'route' ? routePlaces : undefined}
+                activeRoute={mainNavMode === 'route' ? activeRoute : null}
+                selectedFromPlaceId={routeFromPlaceId}
+                selectedToPlaceId={routeToPlaceId}
+                focusRouteTrigger={focusRouteTrigger}
+                onSelectRoutePlace={handleSelectRoutePlace}
               />
             </div>
 
@@ -1129,6 +1229,22 @@ export default function App() {
 
         {/* Minimal Loading Step Indicator */}
         <LoadingIndicator step={loadingStep} />
+
+        {/* Route Navigation Panel (Active in ROUTE mode) */}
+        {mainNavMode === 'route' && (
+          <RouteNavigationPanel
+            cityName={realLocationData?.locationName || 'Vijayawada'}
+            places={routePlaces}
+            fromPlaceId={routeFromPlaceId}
+            toPlaceId={routeToPlaceId}
+            onSelectFromPlace={setRouteFromPlaceId}
+            onSelectToPlace={setRouteToPlaceId}
+            onSwapPlaces={handleSwapRoutePlaces}
+            routeResult={activeRoute}
+            onFocusRoute={() => setFocusRouteTrigger(Date.now())}
+            isLoadingRoute={isCalculatingRoute}
+          />
+        )}
 
         {/* Civil Plan Visualization Switcher: 4-Lane Highway, Flyover, Ring Road (BUILD mode only) */}
         {mainNavMode === 'build' && (
