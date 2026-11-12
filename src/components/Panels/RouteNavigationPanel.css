@@ -299,36 +299,212 @@
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
 }
 
-.route-glow-status-banner {
+/* Master Drive Button */
+.route-master-drive-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 4px;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  transition: all 0.2s ease;
 }
 
-.route-glow-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #0055ff;
-  box-shadow: 0 0 10px #0055ff, 0 0 18px #0033cc;
-  animation: routePulse 1.2s infinite ease-in-out;
+.route-master-drive-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.45);
 }
 
-@keyframes routePulse {
-  0% { transform: scale(0.9); opacity: 0.8; }
-  50% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.8; }
+.route-master-drive-btn--active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
 }
 
-.route-glow-text {
-  font-size: 9.5px;
+.drive-btn-icon {
+  font-size: 16px;
+}
+
+.drive-btn-title {
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.6px;
-  color: #1d4ed8;
+}
+
+.drive-btn-arrow {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Live Turn-by-Turn Drive Banner */
+.route-live-drive-banner {
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #ffffff;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.drive-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drive-live-tag {
+  font-size: 9px;
+  font-weight: 850;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.drive-speed-badge {
+  font-size: 10px;
+  font-weight: 850;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.drive-instruction-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.drive-instruction-icon {
+  font-size: 26px;
+  font-weight: 900;
+  color: #38bdf8;
+  line-height: 1;
+}
+
+.drive-instruction-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.drive-instruction-text {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.drive-instruction-sub {
+  font-size: 9.5px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.drive-progress-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: #334155;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.drive-progress-bar-fill {
+  height: 100%;
+  background: #38bdf8;
+  transition: width 0.15s linear;
+}
+
+.drive-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.4px;
+}
+
+/* Drive Controls Row */
+.route-drive-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: #f8fafc;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.drive-cam-switcher {
+  display: flex;
+  gap: 2px;
+}
+
+.drive-cam-pill {
+  padding: 3px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #475569;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.drive-cam-pill.active {
+  background: #ffffff;
+  color: #0284c7;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.drive-speed-presets {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.drive-speed-chip {
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.drive-speed-chip.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.drive-btn-reset {
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #fee2e2;
+  color: #ef4444;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 /* Mode Pills */

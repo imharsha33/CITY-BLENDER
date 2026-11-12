@@ -221,6 +221,28 @@ export default function App() {
   const [isCalculatingRoute, setIsCalculatingRoute] = useState<boolean>(false);
   const routeEngineRef = useRef<RealRouteEngine | null>(null);
 
+  // Turn-by-Turn Drive Simulation States
+  const [isDriveActive, setIsDriveActive] = useState<boolean>(false);
+  const [driveProgress, setDriveProgress] = useState<number>(0);
+  const [driveSpeedKmh, setDriveSpeedKmh] = useState<number>(45);
+  const [driveCameraMode, setDriveCameraMode] = useState<'follow' | 'overview'>('follow');
+  const [currentDriveStep, setCurrentDriveStep] = useState<any>(null);
+
+  const handleToggleDrive = useCallback(() => {
+    setIsDriveActive((prev) => !prev);
+  }, []);
+
+  const handleResetDrive = useCallback(() => {
+    setDriveProgress(0);
+    setIsDriveActive(false);
+  }, []);
+
+  const handleDriveProgressUpdate = useCallback((progress: number, step: any, spd: number) => {
+    setDriveProgress(progress);
+    setCurrentDriveStep(step);
+    setDriveSpeedKmh(spd);
+  }, []);
+
   const rafRef       = useRef<number>(0);
   const progressRef  = useRef(0);
   const playingRef   = useRef(false);
@@ -1221,6 +1243,10 @@ export default function App() {
                 selectedToPlaceId={routeToPlaceId}
                 focusRouteTrigger={focusRouteTrigger}
                 onSelectRoutePlace={handleSelectRoutePlace}
+                isDriveActive={isDriveActive}
+                driveCameraMode={driveCameraMode}
+                driveSpeedKmh={driveSpeedKmh}
+                onDriveProgressUpdate={handleDriveProgressUpdate}
               />
             </div>
 
@@ -1243,6 +1269,15 @@ export default function App() {
             routeResult={activeRoute}
             onFocusRoute={() => setFocusRouteTrigger(Date.now())}
             isLoadingRoute={isCalculatingRoute}
+            isDriving={isDriveActive}
+            onToggleDrive={handleToggleDrive}
+            driveProgress={driveProgress}
+            driveCameraMode={driveCameraMode}
+            onSetDriveCameraMode={setDriveCameraMode}
+            driveSpeedKmh={driveSpeedKmh}
+            onSetDriveSpeedKmh={setDriveSpeedKmh}
+            onResetDrive={handleResetDrive}
+            currentDriveStep={currentDriveStep}
           />
         )}
 

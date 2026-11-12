@@ -14,6 +14,15 @@ interface RouteNavigationPanelProps {
   routeResult: RouteCalculationResult | null;
   onFocusRoute: () => void;
   isLoadingRoute?: boolean;
+  isDriving?: boolean;
+  onToggleDrive?: () => void;
+  driveProgress?: number;
+  driveCameraMode?: 'follow' | 'overview';
+  onSetDriveCameraMode?: (mode: 'follow' | 'overview') => void;
+  driveSpeedKmh?: number;
+  onSetDriveSpeedKmh?: (speed: number) => void;
+  onResetDrive?: () => void;
+  currentDriveStep?: RouteStep | null;
 }
 
 export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
@@ -27,13 +36,19 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
   routeResult,
   onFocusRoute,
   isLoadingRoute = false,
+  isDriving = false,
+  onToggleDrive,
+  driveProgress = 0,
+  driveCameraMode = 'follow',
+  onSetDriveCameraMode,
+  driveSpeedKmh = 45,
+  onSetDriveSpeedKmh,
+  onResetDrive,
+  currentDriveStep,
 }) => {
   const [transitMode, setTransitMode] = useState<'drive' | 'bike' | 'walk'>('drive');
   const [showDirections, setShowDirections] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  const fromPlace = places.find((p) => p.id === fromPlaceId);
-  const toPlace = places.find((p) => p.id === toPlaceId);
 
   // Filter major traffic circles for quick-access chips
   const majorCircles = places.filter((p) => p.isMajorCircle || p.category === 'circle');
@@ -55,6 +70,10 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
       : transitMode === 'bike'
       ? routeResult?.travelTimeBikeMins
       : routeResult?.travelTimeWalkMins;
+
+  const totalDist = routeResult?.distanceMeters || 1000;
+  const remainingDist = Math.max(0, Math.round(totalDist * (1 - driveProgress)));
+  const progressPct = Math.min(100, Math.round(driveProgress * 100));
 
   return (
     <aside
@@ -117,7 +136,7 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
             <div className="route-selector-row">
               <div className="route-selector-badge route-selector-badge--origin">A</div>
               <div className="route-selector-field-wrap">
-                <label className="route-selector-label" htmlFor="from-place-select">ORIGIN (FROM)</label>
+                <label className="route-selector-label" htmlFor="from-place-select">ORIGIN (START)</label>
                 <select
                   id="from-place-select"
                   className="route-selector-dropdown"
@@ -150,7 +169,7 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
             <div className="route-selector-row">
               <div className="route-selector-badge route-selector-badge--dest">B</div>
               <div className="route-selector-field-wrap">
-                <label className="route-selector-label" htmlFor="to-place-select">DESTINATION (TO)</label>
+                <label className="route-selector-label" htmlFor="to-place-select">DESTINATION (FINISH)</label>
                 <select
                   id="to-place-select"
                   className="route-selector-dropdown"
@@ -170,16 +189,96 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
           {/* Active Glowing Route Status Card */}
           {routeResult && (
             <div className="route-metrics-card">
-              <div className="route-glow-status-banner">
-                <span className="route-glow-dot" />
-                <span className="route-glow-text">GLOWING BLUE ROUTE LINE ACTIVE</span>
+              {/* Turn-by-Turn Driving Banner during Active Drive */}
+              {isDriving && (
+                <div className="route-live-drive-banner">
+                  <div className="drive-banner-top">
+                    <span className="drive-live-tag">🚗 LIVE TURN-BY-TURN DRIVING</span>
+                    <span className="drive-speed-badge">⚡ {driveSpeedKmh} km/h</span>
+                  </div>
+                  <div className="drive-instruction-row">
+                    <span className="drive-instruction-icon">
+                      {(currentDriveStep?.instruction || '').toLowerCase().includes('left')
+                        ? '↰'
+                        : (currentDriveStep?.instruction || '').toLowerCase().includes('right')
+                        ? '↱'
+                        : '↑'}
+                    </span>
+                    <div className="drive-instruction-details">
+                      <span className="drive-instruction-text">
+                        {currentDriveStep?.instruction || 'Continue along the active route'}
+                      </span>
+                      <span className="drive-instruction-sub">
+                        {remainingDist >= 1000 ? `${(remainingDist / 1000).toFixed(1)} km` : `${remainingDist}m`} remaining to destination
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="drive-progress-bar-wrap">
+                    <div className="drive-progress-bar-fill" style={{ width: `${progressPct}%` }} />
+                  </div>
+                  <div className="drive-progress-stats">
+                    <span>{progressPct}% COMPLETED</span>
+                    <span>{remainingDist}m LEFT</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Primary Drive Simulation Trigger Button */}
+              <button
+                className={`route-master-drive-btn ${isDriving ? 'route-master-drive-btn--active' : ''}`}
+                onClick={onToggleDrive}
+                title="Start Turn-by-Turn Driving simulation with animated vehicle and directional path"
+              >
+                <span className="drive-btn-icon">{isDriving ? '⏸' : '🚗'}</span>
+                <span className="drive-btn-title">
+                  {isDriving ? 'PAUSE DRIVE NAVIGATION' : 'START DRIVE NAVIGATION'}
+                </span>
+                <span className="drive-btn-arrow">▶</span>
+              </button>
+
+              {/* Drive Mode Controls (Visible when route is active) */}
+              <div className="route-drive-controls-row">
+                <div className="drive-cam-switcher" title="Toggle Driving Perspective">
+                  <button
+                    className={`drive-cam-pill ${driveCameraMode === 'follow' ? 'active' : ''}`}
+                    onClick={() => onSetDriveCameraMode?.('follow')}
+                  >
+                    🚗 Follow POV
+                  </button>
+                  <button
+                    className={`drive-cam-pill ${driveCameraMode === 'overview' ? 'active' : ''}`}
+                    onClick={() => onSetDriveCameraMode?.('overview')}
+                  >
+                    🛰️ 3D Overview
+                  </button>
+                </div>
+
+                <div className="drive-speed-presets">
+                  {[30, 50, 80].map((spd) => (
+                    <button
+                      key={spd}
+                      className={`drive-speed-chip ${driveSpeedKmh === spd ? 'active' : ''}`}
+                      onClick={() => onSetDriveSpeedKmh?.(spd)}
+                    >
+                      {spd}
+                    </button>
+                  ))}
+                  <button className="drive-btn-reset" onClick={onResetDrive} title="Restart from Origin">
+                    ↺
+                  </button>
+                </div>
               </div>
 
               {/* Transit Mode Selector */}
               <div className="route-mode-pills">
                 <button
                   className={`route-mode-pill ${transitMode === 'drive' ? 'route-mode-pill--active' : ''}`}
-                  onClick={() => setTransitMode('drive')}
+                  onClick={() => {
+                    setTransitMode('drive');
+                    if (!isDriving && onToggleDrive) onToggleDrive();
+                  }}
                 >
                   🚗 Drive (~{routeResult.travelTimeDriveMins}m)
                 </button>
@@ -216,7 +315,7 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
               {/* Traversed Arterials */}
               {(routeResult.traversedRoadNames ?? []).length > 0 && (
                 <div className="route-arterials-row">
-                  <span className="route-arterials-title">VIA:</span>
+                  <span className="route-arterials-title">VIA ARTERIALS:</span>
                   <div className="route-arterials-tags">
                     {(routeResult.traversedRoadNames ?? []).map((road: string, idx: number) => (
                       <span key={idx} className="route-arterial-badge">
@@ -227,7 +326,7 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
                 </div>
               )}
 
-              {/* Focus Route Camera Button */}
+              {/* Focus Route Camera Button & Step list toggle */}
               <div className="route-actions-row">
                 <button
                   className="route-focus-cam-btn"
@@ -238,7 +337,7 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                  <span>FOCUS 3D ROUTE</span>
+                  <span>FOCUS ROUTE</span>
                 </button>
 
                 <button
@@ -277,4 +376,3 @@ export const RouteNavigationPanel: React.FC<RouteNavigationPanelProps> = ({
     </aside>
   );
 };
-

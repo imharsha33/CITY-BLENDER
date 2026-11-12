@@ -262,6 +262,34 @@ export class CameraController {
   }
 
   /**
+   * Smoothly follow the driving vehicle in 3D Turn-by-Turn Navigation Chase mode.
+   */
+  followDrive(carPos: THREE.Vector3, tangent: THREE.Vector3, delta = 0.016) {
+    this._mode = 'follow';
+    this.isFlying = false;
+
+    const behindDist = 34;
+    const altitude = 16;
+    const lookAheadDist = 26;
+
+    const desiredPos = new THREE.Vector3(
+      carPos.x - tangent.x * behindDist,
+      carPos.y + altitude,
+      carPos.z - tangent.z * behindDist
+    );
+    const desiredLook = new THREE.Vector3(
+      carPos.x + tangent.x * lookAheadDist,
+      carPos.y + 1.5,
+      carPos.z + tangent.z * lookAheadDist
+    );
+
+    const lerpRate = Math.min(1.0, delta * 4.5);
+    this.camera.position.lerp(desiredPos, lerpRate);
+    this.currentTarget.lookAt.lerp(desiredLook, lerpRate);
+    this.camera.lookAt(this.currentTarget.lookAt);
+  }
+
+  /**
    * Focus on a specific element (road, junction, bottleneck, spine)
    * while generously retaining the surrounding city context.
    */

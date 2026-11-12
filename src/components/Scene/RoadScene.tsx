@@ -74,6 +74,10 @@ interface RoadSceneProps {
   selectedToPlaceId?: string | null;
   focusRouteTrigger?: number;
   onSelectRoutePlace?: (place: RealPlace) => void;
+  isDriveActive?: boolean;
+  driveCameraMode?: 'follow' | 'overview';
+  driveSpeedKmh?: number;
+  onDriveProgressUpdate?: (progress: number, currentStep: any, speedKmh: number) => void;
 }
 
 // Cache WebGL support globally to avoid creating throwaway contexts on every render frame
@@ -132,6 +136,10 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
   selectedToPlaceId,
   focusRouteTrigger,
   onSelectRoutePlace,
+  isDriveActive,
+  driveCameraMode,
+  driveSpeedKmh,
+  onDriveProgressUpdate,
 }) => {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const managerRef = useRef<SceneManager | null>(null);
@@ -264,6 +272,34 @@ export const RoadScene: React.FC<RoadSceneProps> = ({
     if (!managerRef.current || !focusRouteTrigger) return;
     managerRef.current.focusActiveRoute();
   }, [focusRouteTrigger]);
+
+  // Handle Drive Navigation state changes
+  useEffect(() => {
+    if (!managerRef.current) return;
+    if (isDriveActive) {
+      managerRef.current.startDrive(driveSpeedKmh || 45);
+    } else {
+      managerRef.current.pauseDrive();
+    }
+  }, [isDriveActive, driveSpeedKmh]);
+
+  useEffect(() => {
+    if (!managerRef.current) return;
+    managerRef.current.setDriveCameraMode(driveCameraMode || 'follow');
+  }, [driveCameraMode]);
+
+  // Periodic drive progress telemetry update back to parent
+  useEffect(() => {
+    if (!onDriveProgressUpdate) return;
+    const interval = setInterval(() => {
+      if (!managerRef.current) return;
+      const t = managerRef.current.routeVis.getDrivingTransform();
+      if (t) {
+        onDriveProgressUpdate(t.progress, t.currentStep, t.speedKmh);
+      }
+    }, 150);
+    return () => clearInterval(interval);
+  }, [onDriveProgressUpdate]);
 
   // Sync camera focus on target element
   useEffect(() => {

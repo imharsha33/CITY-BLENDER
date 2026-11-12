@@ -675,6 +675,29 @@ export class SceneManager {
     this.camCtrl.fitToBounds(bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ, 1.8);
   }
 
+  startDrive(speedKmh = 45): void {
+    this.routeVis.startDrive(speedKmh);
+  }
+
+  pauseDrive(): void {
+    this.routeVis.pauseDrive();
+  }
+
+  resumeDrive(): void {
+    this.routeVis.resumeDrive();
+  }
+
+  resetDrive(): void {
+    this.routeVis.resetDrive();
+  }
+
+  setDriveCameraMode(mode: 'follow' | 'overview'): void {
+    this.routeVis.setDriveCameraMode(mode);
+    if (mode === 'overview') {
+      this.focusActiveRoute();
+    }
+  }
+
   // ── Raycasting Interactivity ────────────────────────────────────────────────
   handleCanvasClick(
     clientX: number,
@@ -1231,6 +1254,14 @@ export class SceneManager {
         this.analysisVis.updateAnimation(time);
         this.realLocationMgr.update(delta);
         this.routeVis.update(delta, time);
+
+        // Turn-by-Turn Driving Camera Tracking
+        if (this.routeVis.isDriving && this.routeVis.driveCameraMode === 'follow') {
+          const transform = this.routeVis.getDrivingTransform();
+          if (transform) {
+            this.camCtrl.followDrive(transform.position, transform.tangent, delta);
+          }
+        }
       }
 
       // Update demo vehicles when demo scene is active
